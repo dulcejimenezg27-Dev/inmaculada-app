@@ -1,7 +1,7 @@
 {
   "id": "./",
   "name": "Inmaculada App",
-  "short_name": "Inmaculada",
+  "short_name": "Inmaculada App",
   "description": "Gestión de pagos PSE, comunicados y agenda escolar del Colegio La Inmaculada — Caucasia, Antioquia.",
   "start_url": "./index.html",
   "scope": "./",
