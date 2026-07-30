@@ -1,0 +1,51 @@
+{
+  "id": "./",
+  "name": "Inmaculada App",
+  "short_name": "Inmaculada",
+  "description": "Gestión de pagos PSE, comunicados y agenda escolar del Colegio La Inmaculada — Caucasia, Antioquia.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0055A4",
+  "theme_color": "#0055A4",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "image/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["education", "finance"],
+  "shortcuts": [
+    {
+      "name": "Pagar con PSE",
+      "short_name": "Pagos",
+      "url": "./index.html#pagos",
+      "description": "Acceso rápido a pagos escolares"
+    },
+    {
+      "name": "Comunicados",
+      "short_name": "Avisos",
+      "url": "./index.html#comunicados"
+    },
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "url": "./index.html#agenda"
+    }
+  ]
+}
