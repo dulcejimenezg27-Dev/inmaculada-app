@@ -5,6 +5,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
   getAuth,
+  setPersistence,
+  browserLocalPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -32,7 +34,7 @@ const isConfigured =
   cfg.projectId &&
   cfg.projectId !== "TU_PROYECTO";
 
-const requireApproval = window.ADMIN_CONFIG?.requireDocenteApproval !== false;
+const requireApproval = window.ADMIN_CONFIG?.requireDocenteApproval === true;
 
 let app = null;
 let auth = null;
@@ -44,6 +46,7 @@ if (isConfigured) {
   app = initializeApp(cfg);
   auth = getAuth(app);
   db = getFirestore(app);
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
 }
 
 function isAdminEmail(email) {
@@ -158,21 +161,11 @@ async function signInWithGoogle() {
     throw err;
   }
 
-  const ua = navigator.userAgent || "";
-  const preferRedirect =
-    /Android|iPhone|iPad|iPod/i.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-  if (preferRedirect) {
-    await signInWithRedirect(auth, googleProvider);
-    return null;
-  }
-
+  // Preferir popup: el redirect en móvil a menudo vuelve al login sin crear la cuenta
   try {
     return await signInWithPopup(auth, googleProvider);
   } catch (err) {
     const code = err?.code || "";
-    // Errores que el usuario debe ver (no reintentar con redirect)
     if (
       code === "auth/popup-closed-by-user" ||
       code === "auth/cancelled-popup-request" ||
@@ -182,11 +175,9 @@ async function signInWithGoogle() {
     ) {
       throw err;
     }
-    // Popup bloqueado u otros: intentar redirect
     if (
       code === "auth/popup-blocked" ||
-      code === "auth/operation-not-supported-in-this-environment" ||
-      code === "auth/internal-error"
+      code === "auth/operation-not-supported-in-this-environment"
     ) {
       await signInWithRedirect(auth, googleProvider);
       return null;

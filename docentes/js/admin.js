@@ -243,17 +243,9 @@
 
     try {
       await FB.createUser(email, pass);
-      try {
-        await FB.signOut();
-      } catch {
-        /* ignore */
-      }
       document.getElementById("modal-registro")?.close();
-      showLoginError(
-        "Cuenta creada. Cuando te autoricen podrás entrar con tu correo o Google."
-      );
-      const loginEmail = document.getElementById("login-email");
-      if (loginEmail) loginEmail.value = email;
+      clearLoginError();
+      // onAuthStateChanged abre el panel; la cuenta queda en Authentication → Users
     } catch (ex) {
       if (err) {
         err.hidden = false;
