@@ -16,7 +16,7 @@
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
   const fotoCache = { 1: "", 2: "", 3: "" };
 
-  function authErrorMessage(code) {
+  function authErrorMessage(code, fallback) {
     const map = {
       "auth/invalid-email": "Correo no válido",
       "auth/user-disabled": "Usuario deshabilitado",
@@ -28,10 +28,17 @@
       "auth/email-already-in-use": "Ese correo ya tiene una cuenta",
       "auth/weak-password": "La contraseña debe tener al menos 6 caracteres",
       "auth/popup-closed-by-user": "Inicio con Google cancelado",
-      "auth/popup-blocked": "El navegador bloqueó la ventana de Google",
+      "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permite ventanas emergentes o prueba de nuevo.",
       "auth/cancelled-popup-request": "Inicio con Google cancelado",
+      "auth/unauthorized-domain":
+        "Este dominio no está autorizado. En Firebase: Authentication → Settings → Authorized domains → agrega tu dominio (sin https) y localhost si pruebas en local.",
+      "auth/operation-not-allowed":
+        "Google no está activado. En Firebase: Authentication → Sign-in method → Google → Enable.",
+      "auth/account-exists-with-different-credential":
+        "Ese correo ya existe con otro método. Entra con correo y contraseña o usa el mismo método de siempre.",
+      "auth/not-configured": "Firebase aún no está listo. Recarga la página.",
     };
-    return map[code] || "No se pudo iniciar sesión";
+    return map[code] || fallback || "No se pudo iniciar sesión";
   }
 
   function showLoginError(message) {
@@ -163,20 +170,33 @@
       await FB.signIn(email, pass);
       clearLoginError();
     } catch (ex) {
-      showLoginError(authErrorMessage(ex.code));
+      showLoginError(authErrorMessage(ex.code, ex.message));
     }
   });
 
   document.getElementById("btn-google")?.addEventListener("click", async () => {
+    FB = window.InmaculadaFirebase || FB;
+    const btn = document.getElementById("btn-google");
     if (!FB?.configured) {
       showLoginError("El acceso aún no está disponible. Intenta más tarde.");
       return;
     }
     try {
       clearLoginError();
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute("aria-busy", "true");
+      }
       await FB.signInWithGoogle();
+      // Si fue redirect, la página recarga; si fue popup, onAuth se encarga
     } catch (ex) {
-      showLoginError(authErrorMessage(ex.code));
+      console.error("Google sign-in:", ex);
+      showLoginError(authErrorMessage(ex.code, ex.message));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+      }
     }
   });
 
@@ -237,7 +257,7 @@
     } catch (ex) {
       if (err) {
         err.hidden = false;
-        err.textContent = authErrorMessage(ex.code);
+        err.textContent = authErrorMessage(ex.code, ex.message);
       }
     }
   });
@@ -262,7 +282,14 @@
       return;
     }
 
-    FB.handleRedirectResult?.().catch(() => {});
+    FB.handleRedirectResult?.()
+      .then((result) => {
+        if (result?.user) clearLoginError();
+      })
+      .catch((ex) => {
+        console.error("Google redirect:", ex);
+        showLoginError(authErrorMessage(ex.code, ex.message));
+      });
 
     FB.onAuth(async (user) => {
       if (user) {

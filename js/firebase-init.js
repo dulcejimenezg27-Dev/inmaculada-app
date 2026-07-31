@@ -152,14 +152,41 @@ function watchPuestos(callback) {
 }
 
 async function signInWithGoogle() {
-  if (!auth) throw new Error("Firebase no configurado");
+  if (!auth) {
+    const err = new Error("Firebase no configurado");
+    err.code = "auth/not-configured";
+    throw err;
+  }
+
+  const ua = navigator.userAgent || "";
+  const preferRedirect =
+    /Android|iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (preferRedirect) {
+    await signInWithRedirect(auth, googleProvider);
+    return null;
+  }
+
   try {
     return await signInWithPopup(auth, googleProvider);
   } catch (err) {
-    // En algunos móviles el popup falla: usar redirect
+    const code = err?.code || "";
+    // Errores que el usuario debe ver (no reintentar con redirect)
     if (
-      err?.code === "auth/popup-blocked" ||
-      err?.code === "auth/operation-not-supported-in-this-environment"
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request" ||
+      code === "auth/unauthorized-domain" ||
+      code === "auth/operation-not-allowed" ||
+      code === "auth/account-exists-with-different-credential"
+    ) {
+      throw err;
+    }
+    // Popup bloqueado u otros: intentar redirect
+    if (
+      code === "auth/popup-blocked" ||
+      code === "auth/operation-not-supported-in-this-environment" ||
+      code === "auth/internal-error"
     ) {
       await signInWithRedirect(auth, googleProvider);
       return null;
