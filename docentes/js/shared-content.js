@@ -141,6 +141,75 @@ window.InmaculadaContent = (() => {
     return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
   }
 
+  /** URL usable en <img>: Drive convertido o enlace https directo. */
+  function resolveFotoUrl(url) {
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+    const drive = driveImageUrl(raw);
+    if (drive) return drive;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return "";
+  }
+
+  function inicialesNombre(nombre) {
+    const parts = String(nombre || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function escapeAttr(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function escapeHtmlText(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function autorAvatarHtml(autor) {
+    const nombre =
+      (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
+      "Colegio La Inmaculada";
+    const foto = resolveFotoUrl(autor?.fotoUrl || "");
+    const initials = inicialesNombre(nombre);
+    if (foto) {
+      return `<img class="feed-author__avatar" src="${escapeAttr(foto)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.hidden=false" /><span class="feed-author__avatar feed-author__avatar--fallback" hidden aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+    }
+    return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+  }
+
+  function autorMetaHtml(autor, fechaLabel, categoria) {
+    const nombre =
+      (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
+      "Colegio La Inmaculada";
+    const licencia = String(autor?.licenciatura || "").trim();
+    const tag = categoria
+      ? `<span class="tag tag--${escapeAttr(categoria)}">${escapeHtmlText(categoria)}</span>`
+      : "";
+    return `
+      <div class="feed-author">
+        ${autorAvatarHtml(autor)}
+        <div class="feed-author__info">
+          <strong class="feed-author__name">${escapeHtmlText(nombre)}</strong>
+          ${licencia ? `<span class="feed-author__role">${escapeHtmlText(licencia)}</span>` : ""}
+          <div class="feed-author__meta">
+            ${tag}
+            ${fechaLabel ? `<time class="feed-item__date">${escapeHtmlText(fechaLabel)}</time>` : ""}
+          </div>
+        </div>
+      </div>`;
+  }
+
   function mediaHtml(comunicado) {
     const parts = [];
     const yt = youtubeEmbedUrl(comunicado.videoYoutube || "");
@@ -220,6 +289,10 @@ window.InmaculadaContent = (() => {
     youtubeEmbedUrl,
     drivePreviewUrl,
     driveImageUrl,
+    resolveFotoUrl,
+    inicialesNombre,
+    autorAvatarHtml,
+    autorMetaHtml,
     mediaHtml,
     extractDriveId,
     getBundle,

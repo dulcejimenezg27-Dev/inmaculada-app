@@ -14,6 +14,10 @@
   let comunicados = C ? C.load(C.STORAGE.comunicados, C.seedComunicados) : [];
   let eventos = C ? C.load(C.STORAGE.eventos, C.seedEventos) : [];
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
+  let currentPerfil = null;
+  let perfilObligatorio = false;
+  let likesCounts = {};
+  let likesWatchBound = false;
   const fotoCache = { 1: "", 2: "", 3: "" };
 
   function authErrorMessage(code, fallback) {
@@ -91,8 +95,104 @@
   function applyRoleUI() {
     const roleLabel = document.getElementById("admin-role-label");
     const emailLabel = document.getElementById("admin-user-email");
-    if (roleLabel) roleLabel.textContent = "Inmaculada Docentes";
-    if (emailLabel) emailLabel.textContent = currentUser?.email || "Colegio La Inmaculada";
+    const nombre =
+      currentPerfil &&
+      [currentPerfil.nombres, currentPerfil.apellidos].filter(Boolean).join(" ").trim();
+    if (roleLabel) roleLabel.textContent = nombre || "Inmaculada Docentes";
+    if (emailLabel) {
+      emailLabel.textContent = currentPerfil?.licenciatura
+        ? currentPerfil.licenciatura
+        : currentUser?.email || "Colegio La Inmaculada";
+    }
+  }
+
+  function hasPerfil() {
+    return !!(FB?.perfilCompleto ? FB.perfilCompleto(currentPerfil) : false);
+  }
+
+  function autorSnapshot() {
+    if (FB?.buildAutorFromPerfil) {
+      return FB.buildAutorFromPerfil(currentPerfil, currentUser);
+    }
+    return {
+      uid: currentUser?.uid || "",
+      email: currentUser?.email || "",
+      nombres: currentPerfil?.nombres || "",
+      apellidos: currentPerfil?.apellidos || "",
+      nombreCompleto: "Docente",
+      licenciatura: "",
+      fotoUrl: "",
+    };
+  }
+
+  function updatePerfilPreview() {
+    const form = document.getElementById("form-perfil");
+    const wrap = document.getElementById("perfil-preview");
+    const img = document.getElementById("perfil-preview-img");
+    const fallback = document.getElementById("perfil-preview-fallback");
+    if (!form || !wrap || !img || !fallback) return;
+    const nombres = form.nombres.value.trim();
+    const apellidos = form.apellidos.value.trim();
+    const nombre = [nombres, apellidos].filter(Boolean).join(" ") || "?";
+    const foto = C?.resolveFotoUrl ? C.resolveFotoUrl(form.fotoUrl.value) : "";
+    const initials = C?.inicialesNombre ? C.inicialesNombre(nombre) : "?";
+    wrap.hidden = false;
+    if (foto) {
+      img.hidden = false;
+      img.src = foto;
+      fallback.hidden = true;
+      img.onerror = () => {
+        img.hidden = true;
+        fallback.hidden = false;
+        fallback.textContent = initials;
+      };
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      fallback.hidden = false;
+      fallback.textContent = initials;
+    }
+  }
+
+  function openPerfilModal({ required = false } = {}) {
+    const modal = document.getElementById("modal-perfil");
+    const form = document.getElementById("form-perfil");
+    const title = document.getElementById("modal-perfil-title");
+    const lead = document.getElementById("perfil-lead");
+    const cancel = document.getElementById("btn-perfil-cancelar");
+    const err = document.getElementById("perfil-error");
+    if (!modal || !form) return;
+    perfilObligatorio = !!required;
+    if (err) err.hidden = true;
+    form.nombres.value = currentPerfil?.nombres || "";
+    form.apellidos.value = currentPerfil?.apellidos || "";
+    form.licenciatura.value = currentPerfil?.licenciatura || "";
+    form.fotoUrl.value = currentPerfil?.fotoUrl || "";
+    if (title) {
+      title.textContent = hasPerfil() ? "Editar perfil" : "Crea tu perfil";
+    }
+    if (lead) {
+      lead.textContent = required
+        ? "Antes de publicar, completa tu nombre. Así te verán en los comunicados."
+        : "Así aparecerás en los comunicados que publiques.";
+    }
+    if (cancel) cancel.hidden = !!required;
+    updatePerfilPreview();
+    if (!modal.open) modal.showModal();
+  }
+
+  async function loadPerfilForUser(user) {
+    if (!user || !FB?.fetchPerfil) {
+      currentPerfil = null;
+      return null;
+    }
+    try {
+      currentPerfil = await FB.fetchPerfil(user.uid);
+    } catch (err) {
+      console.error(err);
+      currentPerfil = null;
+    }
+    return currentPerfil;
   }
 
   function setLoginBusy(busy) {
@@ -194,6 +294,16 @@
       }
       if (puestos && typeof puestos === "object") puestosMap = puestos;
       await persistLocal();
+      if (FB.watchLikes && !likesWatchBound) {
+        likesWatchBound = true;
+        FB.watchLikes((state) => {
+          likesCounts = state?.counts || {};
+          renderComunicados();
+        });
+      } else if (!likesWatchBound && FB.fetchLikesState) {
+        const state = await FB.fetchLikesState();
+        likesCounts = state?.counts || {};
+      }
     } catch (err) {
       console.error(err);
       // Mantener datos locales si la nube falla
@@ -227,7 +337,9 @@
   async function enterAs(user) {
     if (!user) {
       currentUser = null;
+      currentPerfil = null;
       isFullAdmin = false;
+      perfilObligatorio = false;
       setLoginBusy(false);
       showApp(false);
       return;
@@ -236,6 +348,7 @@
     const ok = await ensureAuthorized(user);
     if (!ok) {
       currentUser = null;
+      currentPerfil = null;
       isFullAdmin = false;
       setLoginBusy(false);
       showApp(false);
@@ -244,7 +357,12 @@
     currentUser = user;
     isFullAdmin = !!(user && FB.isAdminEmail(user.email));
     clearLoginError();
+    await loadPerfilForUser(user);
+    applyRoleUI();
     showApp(true);
+    if (!hasPerfil()) {
+      openPerfilModal({ required: true });
+    }
     loadCloudData().then(() => {
       renderComunicados();
       renderHonor();
@@ -292,9 +410,59 @@
       /* ignore */
     }
     currentUser = null;
+    currentPerfil = null;
     isFullAdmin = false;
+    perfilObligatorio = false;
     setLoginBusy(false);
     showApp(false);
+  });
+
+  document.getElementById("btn-mi-perfil")?.addEventListener("click", () => {
+    openPerfilModal({ required: false });
+  });
+
+  document.getElementById("form-perfil")?.addEventListener("input", updatePerfilPreview);
+
+  document.getElementById("form-perfil")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    FB = window.InmaculadaFirebase || FB;
+    const form = e.currentTarget;
+    const btn = document.getElementById("btn-perfil-guardar");
+    const err = document.getElementById("perfil-error");
+    if (!FB?.auth?.currentUser) {
+      if (err) {
+        err.hidden = false;
+        err.textContent = "Tu sesión no está activa. Vuelve a entrar.";
+      }
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Guardando…";
+    }
+    if (err) err.hidden = true;
+    try {
+      currentPerfil = await FB.savePerfil({
+        nombres: form.nombres.value,
+        apellidos: form.apellidos.value,
+        licenciatura: form.licenciatura.value,
+        fotoUrl: form.fotoUrl.value,
+      });
+      perfilObligatorio = false;
+      applyRoleUI();
+      document.getElementById("modal-perfil")?.close();
+    } catch (ex) {
+      console.error(ex);
+      if (err) {
+        err.hidden = false;
+        err.textContent = ex.message || "No se pudo guardar el perfil";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Guardar perfil";
+      }
+    }
   });
 
   function bindAuth() {
@@ -327,13 +495,21 @@
     e.preventDefault();
     e.stopPropagation();
     const id = btn.getAttribute("data-close-modal");
+    if (id === "modal-perfil" && perfilObligatorio && !hasPerfil()) return;
     const modal = document.getElementById(id);
     if (modal?.open) modal.close();
   });
 
   document.querySelectorAll("dialog.modal").forEach((dialog) => {
     dialog.addEventListener("click", (e) => {
-      if (e.target === dialog) dialog.close();
+      if (e.target !== dialog) return;
+      if (dialog.id === "modal-perfil" && perfilObligatorio && !hasPerfil()) return;
+      dialog.close();
+    });
+    dialog.addEventListener("cancel", (e) => {
+      if (dialog.id === "modal-perfil" && perfilObligatorio && !hasPerfil()) {
+        e.preventDefault();
+      }
     });
   });
 
@@ -366,15 +542,25 @@
         if (c.videoYoutube) badges.push("YouTube");
         if (c.videoDrive) badges.push("Video Drive");
         if (c.imagenDrive) badges.push("Imagen Drive");
+        const autorNombre =
+          c.autor?.nombreCompleto ||
+          [c.autor?.nombres, c.autor?.apellidos].filter(Boolean).join(" ") ||
+          c.createdBy ||
+          "";
         return `
       <article class="admin-item">
+        ${C?.autorMetaHtml ? C.autorMetaHtml(c.autor || { nombreCompleto: autorNombre || "Docente" }, formatFecha(c.fecha), c.categoria) : `
         <div class="admin-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
           <time>${formatFecha(c.fecha)}</time>
-          ${badges.map((b) => `<span class="tag tag--general">${b}</span>`).join("")}
-        </div>
+        </div>`}
+        ${badges.length ? `<div class="admin-item__meta">${badges.map((b) => `<span class="tag tag--general">${b}</span>`).join("")}</div>` : ""}
         <h3>${escapeHtml(c.titulo)}</h3>
         <p>${escapeHtml(c.mensaje)}</p>
+        <div class="like-stat" aria-label="${likesCounts[c.id] || 0} me gusta">
+          <span class="like-stat__heart" aria-hidden="true">♥</span>
+          <span>${likesCounts[c.id] || 0}</span>
+        </div>
         <div class="admin-item__actions">
           <button type="button" class="btn btn--ghost btn--sm" data-edit-com="${c.id}">Editar</button>
           <button type="button" class="btn-danger" data-del-com="${c.id}">Eliminar</button>
@@ -385,6 +571,10 @@
   }
 
   document.getElementById("btn-nuevo-com")?.addEventListener("click", () => {
+    if (!hasPerfil()) {
+      openPerfilModal({ required: true });
+      return;
+    }
     const form = document.getElementById("form-com");
     form.reset();
     form.recordId.value = "";
@@ -442,6 +632,12 @@
       return;
     }
 
+    if (!hasPerfil()) {
+      document.getElementById("modal-com")?.close();
+      openPerfilModal({ required: true });
+      return;
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Guardando…";
@@ -449,6 +645,7 @@
 
     let item;
     try {
+      const autor = autorSnapshot();
       if (id) {
         item = comunicados.find((c) => c.id === id);
         if (item) {
@@ -458,6 +655,7 @@
           item.videoYoutube = videoYoutube;
           item.videoDrive = videoDrive;
           item.imagenDrive = imagenDrive;
+          item.autor = autor;
           item.updatedAt = new Date().toISOString();
           item.updatedBy = currentUser?.email || FB.auth.currentUser.email || "";
         }
@@ -471,6 +669,7 @@
           videoDrive,
           imagenDrive,
           fecha: new Date().toISOString().slice(0, 10),
+          autor,
           createdBy: currentUser?.email || FB.auth.currentUser.email || "",
           updatedAt: new Date().toISOString(),
         };

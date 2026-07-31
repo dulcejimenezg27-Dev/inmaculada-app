@@ -1266,6 +1266,60 @@ body.has-install-bar .topbar {
   box-shadow: 0 8px 24px rgba(0, 85, 164, 0.08);
 }
 
+.feed-author {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+
+.feed-author__avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--blue-soft);
+  border: 2px solid rgba(0, 85, 164, 0.12);
+}
+
+.feed-author__avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(145deg, var(--blue), var(--blue-deep));
+  border: none;
+}
+
+.feed-author__info {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+  flex: 1;
+}
+
+.feed-author__name {
+  font-size: 0.98rem;
+  color: var(--blue-deep);
+  line-height: 1.25;
+}
+
+.feed-author__role {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.feed-author__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+
 .feed-item__meta {
   display: flex;
   flex-wrap: wrap;
@@ -1315,6 +1369,66 @@ body.has-install-bar .topbar {
   font-size: 0.95rem;
 }
 
+.feed-item__actions {
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(0, 85, 164, 0.08);
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  margin: 0;
+  border-radius: 999px;
+  font-family: inherit;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.like-btn:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+.like-btn__heart {
+  font-size: 1.25rem;
+  line-height: 1;
+  color: inherit;
+}
+
+.like-btn.is-liked {
+  color: #dc2626;
+}
+
+.like-btn.is-liked .like-btn__heart {
+  color: #dc2626;
+}
+
+.like-btn__count {
+  font-size: 0.9rem;
+  font-weight: 650;
+  min-width: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.like-btn.is-pulse .like-btn__heart {
+  animation: likePulse 0.28s ease;
+}
+
+@keyframes likePulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
 .media-embed {
   margin-top: 0.85rem;
   position: relative;
@@ -1349,10 +1463,6 @@ body.has-install-bar .topbar {
   max-height: 420px;
   object-fit: contain;
   background: #fff;
-}
-
-.feed-item__actions {
-  margin-top: 0.75rem;
 }
 
 .btn-link {

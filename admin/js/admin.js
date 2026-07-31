@@ -16,6 +16,8 @@
   let comunicados = C ? C.load(C.STORAGE.comunicados, C.seedComunicados) : [];
   let eventos = C ? C.load(C.STORAGE.eventos, C.seedEventos) : [];
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
+  let likesCounts = {};
+  let likesWatchBound = false;
   const fotoCache = { 1: "", 2: "", 3: "" };
 
   function isLoggedIn() {
@@ -34,14 +36,34 @@
     await persistLocal();
   }
 
-  /** Firestore solo acepta escritura con Auth (docentes). Admin guarda local + export. */
+  /** Firestore: requiere usuario Firebase (admin se conecta al entrar al panel). */
   async function tryCloudWrite(fn) {
-    if (!FB?.configured || !FB.auth?.currentUser) return false;
+    FB = window.InmaculadaFirebase || FB;
+    if (!FB?.configured) return false;
     try {
+      if (FB.whenReady) await FB.whenReady();
+      if (!FB.auth?.currentUser) return false;
       await fn();
       return true;
     } catch (err) {
       console.warn(err);
+      return false;
+    }
+  }
+
+  async function ensureAdminCloudSession() {
+    FB = window.InmaculadaFirebase || FB;
+    if (!FB?.configured) return false;
+    try {
+      if (FB.whenReady) await FB.whenReady();
+      const email = String(CFG.firebaseEmail || "").trim();
+      const pass = String(CFG.firebasePassword || "");
+      if (!email || !pass) return false;
+      if (FB.auth?.currentUser?.email?.toLowerCase() === email.toLowerCase()) return true;
+      await FB.signIn(email, pass);
+      return true;
+    } catch (err) {
+      console.error(err);
       return false;
     }
   }
@@ -63,20 +85,35 @@
     const roleLabel = document.getElementById("admin-role-label");
     const emailLabel = document.getElementById("admin-user-email");
     if (roleLabel) roleLabel.textContent = "Inmaculada Admin";
-    if (emailLabel) emailLabel.textContent = "Colegio La Inmaculada";
+    if (emailLabel) {
+      emailLabel.textContent = FB?.auth?.currentUser?.email || "Colegio La Inmaculada";
+    }
   }
 
   async function loadCloudData() {
     FB = window.InmaculadaFirebase || FB;
     if (!FB?.configured) return;
     try {
-      const [coms, puestos] = await Promise.all([
+      if (FB.whenReady) await FB.whenReady();
+      const [coms, puestos, evs] = await Promise.all([
         FB.fetchComunicados(),
         FB.fetchPuestosMap(),
+        FB.fetchEventos(),
       ]);
       if (Array.isArray(coms)) comunicados = coms;
       if (puestos && typeof puestos === "object") puestosMap = puestos;
+      if (Array.isArray(evs)) eventos = evs;
       await persistLocal();
+      if (FB.watchLikes && !likesWatchBound) {
+        likesWatchBound = true;
+        FB.watchLikes((state) => {
+          likesCounts = state?.counts || {};
+          renderComunicados();
+        });
+      } else if (FB.fetchLikesState) {
+        const state = await FB.fetchLikesState();
+        likesCounts = state?.counts || {};
+      }
     } catch (err) {
       console.error(err);
     }
@@ -94,6 +131,7 @@
       app.style.display = logged ? "block" : "none";
     }
     if (logged) {
+      const cloudOk = await ensureAdminCloudSession();
       applyRoleUI();
       await loadCloudData();
       try {
@@ -103,6 +141,9 @@
         renderHonor();
       } catch (err) {
         console.error(err);
+      }
+      if (!cloudOk) {
+        console.warn("Admin sin sesión Firebase: solo guardará en local hasta configurar firebaseEmail.");
       }
     }
   }
@@ -134,17 +175,22 @@
     }
   });
 
-  document.getElementById("btn-logout")?.addEventListener("click", () => {
+  document.getElementById("btn-logout")?.addEventListener("click", async () => {
     sessionStorage.removeItem(CFG.sessionKey);
+    try {
+      FB = window.InmaculadaFirebase || FB;
+      if (FB?.configured) await FB.signOut();
+    } catch {
+      /* ignore */
+    }
     showApp(false);
   });
 
   function bindFirebaseReady() {
     FB = window.InmaculadaFirebase || null;
-    if (isLoggedIn()) loadCloudData().then(() => {
-      renderComunicados();
-      renderHonor();
-    });
+    if (isLoggedIn()) {
+      showApp(true);
+    }
   }
 
   if (window.InmaculadaFirebase) bindFirebaseReady();
@@ -204,6 +250,10 @@
         </div>
         <h3>${escapeHtml(c.titulo)}</h3>
         <p>${escapeHtml(c.mensaje)}</p>
+        <div class="like-stat" aria-label="${likesCounts[c.id] || 0} me gusta">
+          <span class="like-stat__heart" aria-hidden="true">♥</span>
+          <span>${likesCounts[c.id] || 0}</span>
+        </div>
         <div class="admin-item__actions">
           <button type="button" class="btn btn--ghost btn--sm" data-edit-com="${c.id}">Editar</button>
           <button type="button" class="btn-danger" data-del-com="${c.id}">Eliminar</button>
@@ -279,6 +329,17 @@
           item.imagenDrive = imagenDrive;
           item.updatedAt = new Date().toISOString();
           item.updatedBy = "admin";
+          if (!item.autor) {
+            item.autor = {
+              uid: "admin",
+              email: FB?.auth?.currentUser?.email || "",
+              nombres: "Colegio",
+              apellidos: "La Inmaculada",
+              nombreCompleto: "Colegio La Inmaculada",
+              licenciatura: "Administración",
+              fotoUrl: "",
+            };
+          }
         }
       } else {
         item = {
@@ -292,6 +353,15 @@
           fecha: new Date().toISOString().slice(0, 10),
           createdBy: "admin",
           updatedAt: new Date().toISOString(),
+          autor: {
+            uid: "admin",
+            email: FB?.auth?.currentUser?.email || "",
+            nombres: "Colegio",
+            apellidos: "La Inmaculada",
+            nombreCompleto: "Colegio La Inmaculada",
+            licenciatura: "Administración",
+            fotoUrl: "",
+          },
         };
         comunicados.unshift(item);
       }
@@ -365,11 +435,12 @@
       if (!confirm("¿Eliminar este evento?")) return;
       eventos = eventos.filter((ev) => ev.id !== id);
       persist();
+      tryCloudWrite(() => FB.removeEvento(id));
       renderEventos();
     }
   });
 
-  document.getElementById("form-ev")?.addEventListener("submit", (e) => {
+  document.getElementById("form-ev")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
     const id = String(form.recordId.value || "").trim();
@@ -379,8 +450,9 @@
     const descripcion = form.descripcion.value.trim();
     if (!titulo || !fecha) return;
 
+    let item;
     if (id) {
-      const item = eventos.find((ev) => ev.id === id);
+      item = eventos.find((ev) => ev.id === id);
       if (item) {
         item.titulo = titulo;
         item.fecha = fecha;
@@ -388,9 +460,11 @@
         item.descripcion = descripcion;
       }
     } else {
-      eventos.push({ id: C ? C.uid("e") : `e_${Date.now()}`, titulo, fecha, hora, descripcion });
+      item = { id: C ? C.uid("e") : `e_${Date.now()}`, titulo, fecha, hora, descripcion };
+      eventos.push(item);
     }
-    persist();
+    await persist();
+    if (item) await tryCloudWrite(() => FB.saveEvento(item));
     document.getElementById("modal-ev").close();
     renderEventos();
   });

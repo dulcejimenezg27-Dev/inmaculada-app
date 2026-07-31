@@ -29,6 +29,9 @@
     : [];
   let eventos = C ? C.load(C.STORAGE.eventos, C.seedEventos) : [];
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
+  let likesCounts = {};
+  let likesMine = new Set();
+  let likeBusy = new Set();
   let filtro = "todos";
   let mesActual = new Date();
   mesActual.setDate(1);
@@ -104,7 +107,19 @@
 
   window.addEventListener("hashchange", () => showView(currentHash()));
 
-  /* Comunicados (solo lectura) */
+  /* Comunicados (solo lectura + me gusta) */
+  function likeButtonHtml(comId) {
+    const count = likesCounts[comId] || 0;
+    const liked = likesMine.has(comId);
+    return `
+      <div class="feed-item__actions">
+        <button type="button" class="like-btn${liked ? " is-liked" : ""}" data-like="${escapeHtml(comId)}" aria-pressed="${liked ? "true" : "false"}" aria-label="${liked ? "Quitar me gusta" : "Me gusta"}">
+          <span class="like-btn__heart" aria-hidden="true">${liked ? "♥" : "♡"}</span>
+          <span class="like-btn__count">${count}</span>
+        </button>
+      </div>`;
+  }
+
   function renderComunicados() {
     const list = document.getElementById("lista-comunicados");
     const items = comunicados
@@ -120,17 +135,82 @@
       .map(
         (c) => `
       <article class="feed-item" data-id="${c.id}">
-        <div class="feed-item__meta">
+        ${
+          C && C.autorMetaHtml
+            ? C.autorMetaHtml(c.autor, formatFecha(c.fecha), c.categoria)
+            : `<div class="feed-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
           <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
-        </div>
+        </div>`
+        }
         <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
         <p class="feed-item__body">${escapeHtml(c.mensaje)}</p>
         ${C && C.mediaHtml ? C.mediaHtml(c) : ""}
+        ${likeButtonHtml(c.id)}
       </article>`
       )
       .join("");
   }
+
+  function applyLikesState(state) {
+    if (!state) return;
+    likesCounts = state.counts || {};
+    likesMine = state.mine instanceof Set ? state.mine : new Set(state.mine || []);
+    if (currentHash() === "comunicados") renderComunicados();
+  }
+
+  document.getElementById("lista-comunicados")?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-like]");
+    if (!btn) return;
+    e.preventDefault();
+    const id = btn.getAttribute("data-like");
+    if (!id || likeBusy.has(id)) return;
+
+    const FB = window.InmaculadaFirebase;
+    if (!FB?.configured || !FB.toggleLike) return;
+
+    const wasLiked = likesMine.has(id);
+    const prevCount = likesCounts[id] || 0;
+    // Optimistic UI
+    if (wasLiked) {
+      likesMine.delete(id);
+      likesCounts[id] = Math.max(0, prevCount - 1);
+    } else {
+      likesMine.add(id);
+      likesCounts[id] = prevCount + 1;
+    }
+    const countEl = btn.querySelector(".like-btn__count");
+    const heartEl = btn.querySelector(".like-btn__heart");
+    btn.classList.toggle("is-liked", !wasLiked);
+    btn.setAttribute("aria-pressed", !wasLiked ? "true" : "false");
+    btn.setAttribute("aria-label", !wasLiked ? "Quitar me gusta" : "Me gusta");
+    if (heartEl) heartEl.textContent = !wasLiked ? "♥" : "♡";
+    if (countEl) countEl.textContent = String(likesCounts[id] || 0);
+    btn.classList.add("is-pulse");
+    setTimeout(() => btn.classList.remove("is-pulse"), 280);
+
+    likeBusy.add(id);
+    try {
+      await FB.toggleLike(id);
+    } catch (err) {
+      console.error(err);
+      // Revert
+      if (wasLiked) {
+        likesMine.add(id);
+        likesCounts[id] = prevCount;
+      } else {
+        likesMine.delete(id);
+        likesCounts[id] = prevCount;
+      }
+      btn.classList.toggle("is-liked", wasLiked);
+      btn.setAttribute("aria-pressed", wasLiked ? "true" : "false");
+      btn.setAttribute("aria-label", wasLiked ? "Quitar me gusta" : "Me gusta");
+      if (heartEl) heartEl.textContent = wasLiked ? "♥" : "♡";
+      if (countEl) countEl.textContent = String(prevCount);
+    } finally {
+      likeBusy.delete(id);
+    }
+  });
 
   document.querySelector(".filters")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-filter]");
@@ -579,9 +659,11 @@
 
       // Carga inmediata desde la nube (no solo el listener)
       try {
-        const [coms, puestos] = await Promise.all([
+        const [coms, puestos, evs, likes] = await Promise.all([
           FB.fetchComunicados(),
           FB.fetchPuestosMap(),
+          FB.fetchEventos(),
+          FB.fetchLikesState ? FB.fetchLikesState() : Promise.resolve(null),
         ]);
         if (Array.isArray(coms)) {
           comunicados = coms;
@@ -591,6 +673,11 @@
           puestosMap = puestos;
           if (C) C.save(C.STORAGE.puestos, puestosMap);
         }
+        if (Array.isArray(evs)) {
+          eventos = evs;
+          if (C) C.save(C.STORAGE.eventos, eventos);
+        }
+        if (likes) applyLikesState(likes);
       } catch (err) {
         console.error("Carga Firestore:", err);
       }
@@ -608,6 +695,17 @@
         if (C) C.save(C.STORAGE.puestos, puestosMap);
         if (currentHash() === "puestos") renderPuestos();
       });
+
+      FB.watchEventos((items) => {
+        if (!Array.isArray(items)) return;
+        eventos = items;
+        if (C) C.save(C.STORAGE.eventos, eventos);
+        if (currentHash() === "agenda") renderAgenda();
+      });
+
+      if (FB.watchLikes) {
+        FB.watchLikes((state) => applyLikesState(state));
+      }
 
       showView(currentHash());
     }

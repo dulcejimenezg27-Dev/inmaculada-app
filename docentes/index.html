@@ -94,7 +94,10 @@
           <span id="admin-user-email">Colegio La Inmaculada</span>
         </div>
       </div>
-      <button type="button" class="btn btn--ghost btn--sm" id="btn-logout">Salir</button>
+      <div class="admin-top__actions">
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-mi-perfil">Mi perfil</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-logout">Salir</button>
+      </div>
     </header>
 
     <nav class="admin-tabs" aria-label="Secciones">
@@ -137,6 +140,44 @@
       </section>
     </main>
   </div>
+
+  <!-- Modal perfil docente -->
+  <dialog class="modal" id="modal-perfil">
+    <form class="modal__form" id="form-perfil">
+      <h2 id="modal-perfil-title">Tu perfil</h2>
+      <p class="help" id="perfil-lead" style="margin:0 0 0.35rem;font-size:0.88rem">
+        Así aparecerás en los comunicados que publiques.
+      </p>
+      <div class="perfil-preview" id="perfil-preview" hidden>
+        <img id="perfil-preview-img" alt="" width="64" height="64" />
+        <span id="perfil-preview-fallback" class="feed-author__avatar feed-author__avatar--fallback" hidden>?</span>
+      </div>
+      <label>
+        Nombres
+        <input type="text" name="nombres" required maxlength="80" autocomplete="given-name" placeholder="María Fernanda" />
+      </label>
+      <label>
+        Apellidos
+        <input type="text" name="apellidos" required maxlength="80" autocomplete="family-name" placeholder="García López" />
+      </label>
+      <label>
+        Licenciatura / título (opcional)
+        <input type="text" name="licenciatura" maxlength="120" placeholder="Lic. en Educación Básica" />
+      </label>
+      <label>
+        Foto (enlace de imagen)
+        <input type="text" name="fotoUrl" inputmode="url" maxlength="500" placeholder="https://drive.google.com/file/d/..." />
+      </label>
+      <p class="help" style="margin:0;font-size:0.78rem">
+        Pegá un enlace directo a la imagen o de Google Drive (comparte como «Cualquier persona con el enlace»). Enlaces de perfiles de redes suelen no cargar; usá el enlace de la imagen.
+      </p>
+      <p class="login__error" id="perfil-error" hidden></p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="btn-perfil-cancelar" data-close-modal="modal-perfil">Cancelar</button>
+        <button type="submit" class="btn btn--primary" id="btn-perfil-guardar">Guardar perfil</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Modal comunicado -->
   <dialog class="modal modal--wide" id="modal-com">

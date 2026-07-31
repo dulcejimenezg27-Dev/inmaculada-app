@@ -103,6 +103,63 @@ function parsePuestosDocId(id) {
   return { salon: parts[0], periodo: parts[parts.length - 1] };
 }
 
+function perfilCompleto(perfil) {
+  return !!(
+    perfil &&
+    String(perfil.nombres || "").trim() &&
+    String(perfil.apellidos || "").trim()
+  );
+}
+
+function buildAutorFromPerfil(perfil, user) {
+  const nombres = String(perfil?.nombres || "").trim();
+  const apellidos = String(perfil?.apellidos || "").trim();
+  const nombreCompleto = [nombres, apellidos].filter(Boolean).join(" ").trim();
+  return {
+    uid: perfil?.uid || user?.uid || "",
+    email: perfil?.email || user?.email || "",
+    nombres,
+    apellidos,
+    nombreCompleto: nombreCompleto || "Docente",
+    licenciatura: String(perfil?.licenciatura || "").trim(),
+    fotoUrl: String(perfil?.fotoUrl || "").trim(),
+  };
+}
+
+async function fetchPerfil(uid) {
+  await initPromise;
+  if (!db || !uid) return null;
+  const snap = await withTimeout(getDoc(doc(db, "perfiles", uid)), 12000, "Carga de perfil");
+  if (!snap.exists()) return null;
+  return { uid: snap.id, ...snap.data() };
+}
+
+async function savePerfil(perfil) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  const user = auth?.currentUser;
+  if (!user) throw new Error("Debes iniciar sesión para guardar tu perfil");
+  const uid = user.uid;
+  const payload = sanitize({
+    uid,
+    email: user.email || "",
+    nombres: String(perfil.nombres || "").trim(),
+    apellidos: String(perfil.apellidos || "").trim(),
+    licenciatura: String(perfil.licenciatura || "").trim(),
+    fotoUrl: String(perfil.fotoUrl || "").trim(),
+    updatedAt: new Date().toISOString(),
+  });
+  if (!payload.nombres || !payload.apellidos) {
+    throw new Error("Nombres y apellidos son obligatorios");
+  }
+  await withTimeout(
+    setDoc(doc(db, "perfiles", uid), payload, { merge: true }),
+    20000,
+    "Guardar perfil"
+  );
+  return payload;
+}
+
 async function fetchComunicados() {
   await initPromise;
   if (!db) return [];
@@ -169,6 +226,119 @@ async function removePuestosEntry(salon, periodo) {
   );
 }
 
+async function fetchEventos() {
+  await initPromise;
+  if (!db) return [];
+  const snap = await withTimeout(getDocs(collection(db, "eventos")), 20000, "Carga de agenda");
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(a.fecha || "").localeCompare(String(b.fecha || "")));
+}
+
+async function saveEvento(item) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
+  const { id, ...rest } = item;
+  if (!id) throw new Error("Evento sin id");
+  await withTimeout(
+    setDoc(doc(db, "eventos", id), sanitize({ ...rest, id }), { merge: true }),
+    20000,
+    "Guardar evento"
+  );
+}
+
+async function removeEvento(id) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
+  await withTimeout(deleteDoc(doc(db, "eventos", id)), 20000, "Eliminar evento");
+}
+
+const LIKES_CLIENT_KEY = "inmaculada_like_client_id";
+
+function getLikeClientId() {
+  try {
+    let id = localStorage.getItem(LIKES_CLIENT_KEY);
+    if (id && /^[a-zA-Z0-9_-]{8,64}$/.test(id)) return id;
+    id = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(LIKES_CLIENT_KEY, id);
+    return id;
+  } catch {
+    return `c${Date.now().toString(36)}tmp`;
+  }
+}
+
+function likeDocId(comunicadoId, clientId) {
+  return `${comunicadoId}__${clientId}`;
+}
+
+/**
+ * @returns {{ counts: Record<string, number>, mine: Set<string> }}
+ */
+function aggregateLikes(docs, clientId) {
+  const counts = {};
+  const mine = new Set();
+  docs.forEach((d) => {
+    const data = d.data ? d.data() : d;
+    const comId = data.comunicadoId || String(d.id || "").split("__")[0];
+    if (!comId) return;
+    counts[comId] = (counts[comId] || 0) + 1;
+    if (data.clientId === clientId) mine.add(comId);
+  });
+  return { counts, mine };
+}
+
+async function fetchLikesState() {
+  await initPromise;
+  if (!db) return { counts: {}, mine: new Set() };
+  const clientId = getLikeClientId();
+  const snap = await withTimeout(getDocs(collection(db, "likes")), 20000, "Carga de me gusta");
+  return aggregateLikes(snap.docs, clientId);
+}
+
+function watchLikes(callback) {
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchLikes(callback);
+    });
+    return () => {};
+  }
+  const clientId = getLikeClientId();
+  return onSnapshot(
+    collection(db, "likes"),
+    (snap) => {
+      callback(aggregateLikes(snap.docs, clientId));
+    },
+    (err) => console.error(err)
+  );
+}
+
+async function toggleLike(comunicadoId) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  const comId = String(comunicadoId || "").trim();
+  if (!comId) throw new Error("Comunicado inválido");
+  const clientId = getLikeClientId();
+  const id = likeDocId(comId, clientId);
+  const ref = doc(db, "likes", id);
+  const existing = await withTimeout(getDoc(ref), 12000, "Me gusta");
+  if (existing.exists()) {
+    await withTimeout(deleteDoc(ref), 12000, "Quitar me gusta");
+    return false;
+  }
+  await withTimeout(
+    setDoc(ref, sanitize({
+      comunicadoId: comId,
+      clientId,
+      createdAt: new Date().toISOString(),
+    })),
+    12000,
+    "Dar me gusta"
+  );
+  return true;
+}
+
 function watchComunicados(callback) {
   if (!db) {
     initPromise.then(() => {
@@ -211,6 +381,25 @@ function watchPuestos(callback) {
   );
 }
 
+function watchEventos(callback) {
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchEventos(callback);
+    });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "eventos"),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(a.fecha || "").localeCompare(String(b.fecha || "")));
+      callback(items);
+    },
+    (err) => console.error(err)
+  );
+}
+
 window.InmaculadaFirebase = {
   ready: true,
   configured: isConfigured,
@@ -224,12 +413,17 @@ window.InmaculadaFirebase = {
   whenReady: () => initPromise,
   isAdminEmail,
   isDocenteAuthorized,
+  perfilCompleto,
+  buildAutorFromPerfil,
+  fetchPerfil,
+  savePerfil,
   signIn: async (email, password) => {
     await initPromise;
     return signInWithEmailAndPassword(auth, email, password);
   },
   signOut: async () => {
     await initPromise;
+    if (!auth?.currentUser) return;
     return signOut(auth);
   },
   onAuth: (cb) => {
@@ -244,8 +438,16 @@ window.InmaculadaFirebase = {
   fetchPuestosMap,
   savePuestosEntry,
   removePuestosEntry,
+  fetchEventos,
+  saveEvento,
+  removeEvento,
   watchComunicados,
   watchPuestos,
+  watchEventos,
+  getLikeClientId,
+  fetchLikesState,
+  watchLikes,
+  toggleLike,
 };
 
 // El evento ready se dispara al terminar initPromise (arriba).

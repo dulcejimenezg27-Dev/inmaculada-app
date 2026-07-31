@@ -87,6 +87,8 @@
       html: `
         <h3>Cómo entrar</h3>
         <p>Usa el <strong>correo</strong> y la <strong>contraseña</strong> que te asignó el colegio (creados en Firebase).</p>
+        <h3>Tu perfil</h3>
+        <p>La primera vez te pedirá <strong>nombres</strong>, <strong>apellidos</strong>, licenciatura (opcional) y un <strong>enlace de foto</strong> (Drive o imagen directa). Así te verán en los comunicados. Puedes editarlo con <strong>Mi perfil</strong>.</p>
         <h3>Qué puedes hacer</h3>
         <ul>
           <li><strong>Comunicados:</strong> publicar avisos (texto y enlaces de YouTube o Drive).</li>

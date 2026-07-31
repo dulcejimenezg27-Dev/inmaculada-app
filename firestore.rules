@@ -1,19 +1,62 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Lectura pública (app de familias)
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Correos del panel Admin (deben coincidir con el usuario Firebase del admin)
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() in [
+          'admin@inmaculada.app'
+        ];
+    }
+
+    // Comunicados: todos leen; docentes y admin (autenticados) escriben
     match /comunicados/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update, delete: if signedIn();
     }
+
+    // Cuadro de honor: todos leen; docentes y admin escriben
     match /puestos/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update, delete: if signedIn();
     }
-    // Autorización de docentes (tú creas/borras docs en Firebase Console)
-    // ID del documento = correo en minúsculas, ej. docente@colegio.edu.co
+
+    // Agenda: todos leen; solo Admin escribe
+    match /eventos/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Me gusta (público, sin login): un like por dispositivo y comunicado
+    match /likes/{likeId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['comunicadoId', 'clientId', 'createdAt'])
+        && request.resource.data.comunicadoId is string
+        && request.resource.data.clientId is string
+        && request.resource.data.comunicadoId.size() > 0
+        && request.resource.data.comunicadoId.size() < 80
+        && request.resource.data.clientId.size() >= 8
+        && request.resource.data.clientId.size() <= 64
+        && likeId == request.resource.data.comunicadoId + '__' + request.resource.data.clientId;
+      allow delete: if true;
+      allow update: if false;
+    }
+
+    // Perfil del docente (foto y nombre en publicaciones)
+    match /perfiles/{uid} {
+      allow read: if true;
+      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Lista opcional de docentes autorizados (solo se edita en la Consola)
     match /docentes_autorizados/{email} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if false;
     }
   }
