@@ -1,15 +1,13 @@
 /**
  * Configuración de Firebase — InmaculadaApp
- * Completa apiKey y appId desde:
- * Firebase Console → ⚙️ Configuración del proyecto → Tus apps → App web → Configuración del SDK
  */
 window.FIREBASE_CONFIG = {
-  apiKey: "TU_API_KEY",
+  apiKey: "AIzaSyBjYl1dShz3XEav3bITPRQp-QjVNeMRU4E",
   authDomain: "inmaculadaapp-83a89.firebaseapp.com",
   projectId: "inmaculadaapp-83a89",
-  storageBucket: "inmaculadaapp-83a89.appspot.com",
+  storageBucket: "inmaculadaapp-83a89.firebasestorage.app",
   messagingSenderId: "67387265313",
-  appId: "TU_APP_ID",
+  appId: "1:67387265313:web:5501ba100d6515ea35ae60",
 };
 
 /**
