@@ -103,9 +103,13 @@ window.InmaculadaContent = (() => {
   function extractDriveId(url) {
     if (!url) return "";
     const s = String(url).trim();
+    // Si ya es un enlace lh3/googleusercontent con /d/ID
+    const lh = s.match(/googleusercontent\.com\/d\/([^/=?#]+)/i);
+    if (lh?.[1]) return lh[1];
     const patterns = [
       /\/file\/d\/([^/]+)/,
       /[?&]id=([^&]+)/,
+      /\/thumbnail\?id=([^&]+)/,
       /\/d\/([^/]+)/,
       /\/open\?id=([^&]+)/,
     ];
@@ -113,7 +117,25 @@ window.InmaculadaContent = (() => {
       const m = s.match(re);
       if (m?.[1]) return m[1];
     }
+    // ID “pelado” de Drive (letras, números, - _)
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s;
     return "";
+  }
+
+  /** Varias URLs candidatas: /uc ya no sirve para incrustar (403). */
+  function driveImageCandidates(url) {
+    const raw = String(url || "").trim();
+    if (!raw) return [];
+    const id = extractDriveId(raw);
+    if (!id) {
+      if (/^https?:\/\//i.test(raw) && !/drive\.google\.com/i.test(raw)) return [raw];
+      return [];
+    }
+    return [
+      `https://lh3.googleusercontent.com/d/${id}=w1000`,
+      `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
+      `https://lh3.googleusercontent.com/d/${id}`,
+    ];
   }
 
   function youtubeEmbedUrl(url) {
@@ -137,28 +159,24 @@ window.InmaculadaContent = (() => {
   }
 
   function driveImageUrl(url) {
-    const id = extractDriveId(url);
-    return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
+    const list = driveImageCandidates(url);
+    return list[0] || "";
   }
 
   /** URL usable en <img>: Drive convertido o enlace https directo. */
   function resolveFotoUrl(url) {
-    const raw = String(url || "").trim();
-    if (!raw) return "";
-    const drive = driveImageUrl(raw);
-    if (drive) return drive;
-    if (/^https?:\/\//i.test(raw)) return raw;
-    return "";
+    return resolveDisplayImage(url);
   }
 
-  function inicialesNombre(nombre) {
-    const parts = String(nombre || "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    if (!parts.length) return "?";
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  /** Resuelve data:, Drive o https para mostrar. */
+  function resolveDisplayImage(url) {
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("data:")) return raw;
+    const list = driveImageCandidates(raw);
+    if (list.length) return list[0];
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return "";
   }
 
   function escapeAttr(str) {
@@ -176,14 +194,99 @@ window.InmaculadaContent = (() => {
       .replace(/"/g, "&quot;");
   }
 
+  /** onerror en <img> para probar URLs alternativas de Drive. */
+  function imgFallbackOnErrorAttr(fallbacks) {
+    const list = (fallbacks || []).filter(Boolean);
+    if (!list.length) {
+      return `onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.hidden=false"`;
+    }
+    return `data-fallbacks="${list.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i<f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];}else{el.style.display='none';if(el.nextElementSibling)el.nextElementSibling.hidden=false;}})(this)"`;
+  }
+
+  /**
+   * <img> con reintentos para Drive.
+   * @param {string} url
+   * @param {{ className?: string, alt?: string, loading?: string }} [opts]
+   */
+  function driveImgTag(url, opts = {}) {
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+    const cls = opts.className ? ` class="${escapeAttr(opts.className)}"` : "";
+    const alt = ` alt="${escapeAttr(opts.alt || "")}"`;
+    const loading = opts.loading ? ` loading="${escapeAttr(opts.loading)}"` : "";
+    if (raw.startsWith("data:")) {
+      return `<img${cls} src="${escapeAttr(raw)}"${alt}${loading} />`;
+    }
+    const candidates = driveImageCandidates(raw);
+    if (!candidates.length) {
+      if (/^https?:\/\//i.test(raw)) {
+        return `<img${cls} src="${escapeAttr(raw)}"${alt}${loading} onerror="this.style.display='none'" />`;
+      }
+      return "";
+    }
+    const [first, ...rest] = candidates;
+    return `<img${cls} src="${escapeAttr(first)}"${alt}${loading} ${imgFallbackOnErrorAttr(rest)} />`;
+  }
+
+  /** Asigna src a un <img> probando candidatas de Drive. */
+  function setDriveImage(img, url, onFail) {
+    if (!img) return;
+    const raw = String(url || "").trim();
+    if (!raw) {
+      if (typeof onFail === "function") onFail();
+      return;
+    }
+    if (raw.startsWith("data:")) {
+      img.onerror = null;
+      img.hidden = false;
+      img.src = raw;
+      return;
+    }
+    const candidates = driveImageCandidates(raw);
+    if (!candidates.length) {
+      if (/^https?:\/\//i.test(raw)) {
+        img.onerror = () => {
+          if (typeof onFail === "function") onFail();
+        };
+        img.hidden = false;
+        img.src = raw;
+        return;
+      }
+      if (typeof onFail === "function") onFail();
+      return;
+    }
+    let i = 0;
+    img.hidden = false;
+    img.onerror = () => {
+      i += 1;
+      if (i < candidates.length) img.src = candidates[i];
+      else if (typeof onFail === "function") onFail();
+    };
+    img.onload = () => {
+      img.hidden = false;
+    };
+    img.src = candidates[0];
+  }
+
+  function inicialesNombre(nombre) {
+    const parts = String(nombre || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   function autorAvatarHtml(autor) {
     const nombre =
       (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
       "Colegio La Inmaculada";
-    const foto = resolveFotoUrl(autor?.fotoUrl || "");
+    const candidates = driveImageCandidates(autor?.fotoUrl || "");
     const initials = inicialesNombre(nombre);
-    if (foto) {
-      return `<img class="feed-author__avatar" src="${escapeAttr(foto)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.hidden=false" /><span class="feed-author__avatar feed-author__avatar--fallback" hidden aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+    if (candidates.length) {
+      const [first, ...rest] = candidates;
+      return `<img class="feed-author__avatar" src="${escapeAttr(first)}" alt="" loading="lazy" ${imgFallbackOnErrorAttr(rest)} /><span class="feed-author__avatar feed-author__avatar--fallback" hidden aria-hidden="true">${escapeHtmlText(initials)}</span>`;
     }
     return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
   }
@@ -224,10 +327,11 @@ window.InmaculadaContent = (() => {
         `<div class="media-embed"><iframe src="${driveVid}" title="Video de Drive" allow="autoplay" allowfullscreen loading="lazy"></iframe></div>`
       );
     }
-    const driveImg = driveImageUrl(comunicado.imagenDrive || "");
-    if (driveImg) {
+    const imgCandidates = driveImageCandidates(comunicado.imagenDrive || "");
+    if (imgCandidates.length) {
+      const [first, ...rest] = imgCandidates;
       parts.push(
-        `<div class="media-image"><img src="${driveImg}" alt="Imagen del comunicado" loading="lazy" /></div>`
+        `<div class="media-image"><img src="${escapeAttr(first)}" alt="Imagen del comunicado" loading="lazy" ${imgFallbackOnErrorAttr(rest)} /></div>`
       );
     }
     return parts.join("");
@@ -289,7 +393,11 @@ window.InmaculadaContent = (() => {
     youtubeEmbedUrl,
     drivePreviewUrl,
     driveImageUrl,
+    driveImageCandidates,
     resolveFotoUrl,
+    resolveDisplayImage,
+    driveImgTag,
+    setDriveImage,
     inicialesNombre,
     autorAvatarHtml,
     autorMetaHtml,

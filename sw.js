@@ -1,5 +1,5 @@
 /* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v12";
+const CACHE_NAME = "inmaculada-v15";
 const ASSETS = [
   "./index.html",
   "./css/styles.css",
@@ -44,6 +44,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+
+  // Dejar que las PWA anidadas (docentes/admin) se controlen solas
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/docentes/") || url.pathname.startsWith("/admin/"))
+  ) {
+    return;
+  }
 
   if (url.hostname.includes("psepagos.co") || url.hostname.includes("pse.com.co")) {
     return;

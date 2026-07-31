@@ -1,6 +1,6 @@
 /* Service Worker — Inmaculada Admin PWA */
 
-const CACHE_NAME = "inmaculada-admin-v3";
+const CACHE_NAME = "inmaculada-admin-v5";
 
 const ASSETS = [
 

@@ -373,13 +373,24 @@
     const topHtml = data.top
       .map((est, i) => {
         const place = i + 1;
-        const photoSrc =
-          est.foto && C?.driveImageUrl && !String(est.foto).startsWith("data:")
-            ? C.driveImageUrl(est.foto) || est.foto
-            : est.foto || "";
-        const photo = photoSrc
-          ? `<img class="puestos-card__photo" src="${photoSrc}" alt="${escapeHtml(est.nombre)}" />`
-          : `<div class="puestos-card__photo puestos-card__photo--empty" aria-hidden="true">${place}</div>`;
+        const rawFoto = est.fotoDrive || est.foto || "";
+        let photo = "";
+        if (rawFoto && C?.driveImgTag) {
+          photo = C.driveImgTag(rawFoto, {
+            className: "puestos-card__photo",
+            alt: est.nombre || "",
+            loading: "lazy",
+          });
+        } else if (rawFoto) {
+          const src =
+            C?.resolveDisplayImage?.(rawFoto) ||
+            C?.driveImageUrl?.(rawFoto) ||
+            rawFoto;
+          photo = `<img class="puestos-card__photo" src="${escapeHtml(src)}" alt="${escapeHtml(est.nombre || "")}" loading="lazy" />`;
+        }
+        if (!photo) {
+          photo = `<div class="puestos-card__photo puestos-card__photo--empty" aria-hidden="true">${place}</div>`;
+        }
         return `
           <article class="puestos-card puestos-card--${place}">
             ${photo}

@@ -134,18 +134,32 @@
     const nombres = form.nombres.value.trim();
     const apellidos = form.apellidos.value.trim();
     const nombre = [nombres, apellidos].filter(Boolean).join(" ") || "?";
-    const foto = C?.resolveFotoUrl ? C.resolveFotoUrl(form.fotoUrl.value) : "";
+    const candidates = C?.driveImageCandidates
+      ? C.driveImageCandidates(form.fotoUrl.value)
+      : C?.resolveFotoUrl
+        ? [C.resolveFotoUrl(form.fotoUrl.value)].filter(Boolean)
+        : [];
     const initials = C?.inicialesNombre ? C.inicialesNombre(nombre) : "?";
     wrap.hidden = false;
-    if (foto) {
+    if (candidates.length) {
+      let i = 0;
       img.hidden = false;
-      img.src = foto;
       fallback.hidden = true;
+      img.onload = () => {
+        img.hidden = false;
+        fallback.hidden = true;
+      };
       img.onerror = () => {
+        i += 1;
+        if (i < candidates.length) {
+          img.src = candidates[i];
+          return;
+        }
         img.hidden = true;
         fallback.hidden = false;
         fallback.textContent = initials;
       };
+      img.src = candidates[0];
     } else {
       img.hidden = true;
       img.removeAttribute("src");
@@ -841,7 +855,12 @@
           (est) => `
       <div class="honor-line">
         <span class="honor-n">${est.n}°</span>
-        ${est.foto ? `<img src="${resolveHonorFoto(est.foto)}" alt="" />` : ""}
+        ${(() => {
+          const raw = honorFotoRaw(est);
+          if (!raw) return "";
+          if (C?.driveImgTag) return C.driveImgTag(raw, { alt: "", loading: "lazy" });
+          return `<img src="${escapeHtml(resolveHonorFoto(raw))}" alt="" />`;
+        })()}
         <span>${escapeHtml(est.nombre)}</span>
       </div>`
         )
@@ -923,11 +942,37 @@
   function resolveHonorFoto(url) {
     if (!url) return "";
     if (isDataFoto(url)) return url;
+    if (C?.resolveDisplayImage) return C.resolveDisplayImage(url) || url;
     if (C?.driveImageUrl) {
       const drive = C.driveImageUrl(url);
       if (drive) return drive;
     }
     return url;
+  }
+
+  function honorFotoRaw(est) {
+    if (!est) return "";
+    if (isDataFoto(est.foto)) return est.foto;
+    return est.fotoDrive || est.foto || "";
+  }
+
+  function setHonorPreview(img, url) {
+    if (!img) return;
+    if (C?.setDriveImage) {
+      C.setDriveImage(img, url, () => {
+        img.removeAttribute("src");
+        img.hidden = true;
+      });
+      return;
+    }
+    const preview = resolveHonorFoto(url);
+    if (preview) {
+      img.hidden = false;
+      img.src = preview;
+    } else {
+      img.removeAttribute("src");
+      img.hidden = true;
+    }
   }
 
   function openHonorModal(edit) {
@@ -950,20 +995,14 @@
         form[`nombre${n}`].value = est.nombre || "";
         const foto = est.foto || "";
         if (foto && !isDataFoto(foto)) {
-          form[`fotoDrive${n}`].value = est.fotoDrive || foto;
-          const preview = resolveHonorFoto(foto);
+          const driveLink = est.fotoDrive || foto;
+          form[`fotoDrive${n}`].value = driveLink;
           const img = form.querySelector(`[data-puesto="${n}"] img`);
-          if (img && preview) {
-            img.src = preview;
-            img.hidden = false;
-          }
+          setHonorPreview(img, driveLink);
         } else if (foto) {
           fotoCache[n] = foto;
           const img = form.querySelector(`[data-puesto="${n}"] img`);
-          if (img) {
-            img.src = foto;
-            img.hidden = false;
-          }
+          setHonorPreview(img, foto);
         }
       });
       (existing.rest || []).forEach((est) => addRestRow(est.nombre || ""));
@@ -1006,14 +1045,10 @@
     const driveInput = e.target.closest('input[name^="fotoDrive"]');
     if (driveInput) {
       const field = driveInput.closest("[data-puesto]");
-      const preview = resolveHonorFoto(driveInput.value.trim());
       const img = field?.querySelector("img");
-      if (img && preview) {
-        img.src = preview;
-        img.hidden = false;
-        const n = Number(field.getAttribute("data-puesto"));
-        fotoCache[n] = "";
-      }
+      const n = Number(field?.getAttribute("data-puesto"));
+      fotoCache[n] = "";
+      setHonorPreview(img, driveInput.value.trim());
       return;
     }
 
@@ -1027,10 +1062,7 @@
       const driveField = field.querySelector(`input[name="fotoDrive${n}"]`);
       if (driveField) driveField.value = "";
       const img = field.querySelector("img");
-      if (img) {
-        img.src = dataUrl;
-        img.hidden = false;
-      }
+      setHonorPreview(img, dataUrl);
     } catch {
       alert("No se pudo procesar la foto.");
     }
@@ -1057,7 +1089,7 @@
       const driveLink = String(form[`fotoDrive${n}`]?.value || "").trim();
       if (driveLink) {
         return {
-          foto: resolveHonorFoto(driveLink) || driveLink,
+          foto: driveLink,
           fotoDrive: driveLink,
         };
       }
@@ -1137,12 +1169,15 @@
 
   /* PWA instalación */
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("./sw.js", { scope: "./" })
+      .then((reg) => reg.update().catch(() => {}))
+      .catch(() => {});
   }
 
   const INSTALL_DISMISS_KEY = "inmaculada_docentes_install_dismissed";
   const INSTALL_DONE_KEY = "inmaculada_docentes_installed";
-  let deferredPrompt = null;
+  let deferredPrompt = window.__pwaDeferredPrompt || null;
 
   const ua = navigator.userAgent || "";
   const isIos =
@@ -1169,16 +1204,22 @@
   function markInstalled() {
     localStorage.setItem(INSTALL_DONE_KEY, "1");
     deferredPrompt = null;
+    window.__pwaDeferredPrompt = null;
     hideInstallBar();
   }
   function shouldOfferInstall() {
     if (isStandalone || wasInstalled() || wasDismissed()) return false;
     return isIos || isAndroid || isWindows || isDesktopChrome;
   }
+  function syncInstallLabel() {
+    if (!installLabel) return;
+    if (isIos) installLabel.textContent = "Cómo instalar";
+    else if (isAndroid && !deferredPrompt) installLabel.textContent = "Instalar Docentes";
+    else installLabel.textContent = "Instalar Docentes";
+  }
   function showInstallBar() {
     if (!installBar || !shouldOfferInstall()) return;
-    if (isIos && installLabel) installLabel.textContent = "Cómo instalar";
-    else if (installLabel) installLabel.textContent = "Instalar Docentes";
+    syncInstallLabel();
     installBar.hidden = false;
   }
   function hideInstallBar() {
@@ -1186,16 +1227,33 @@
     installBar.hidden = true;
   }
 
-  if (isStandalone) localStorage.setItem(INSTALL_DONE_KEY, "1");
-
-  window.addEventListener("beforeinstallprompt", (e) => {
+  function capturePrompt(e) {
     if (wasInstalled() || isStandalone) {
-      e.preventDefault();
+      try {
+        e.preventDefault();
+      } catch {
+        /* ignore */
+      }
       return;
     }
-    e.preventDefault();
+    try {
+      e.preventDefault();
+    } catch {
+      /* ignore */
+    }
     deferredPrompt = e;
+    window.__pwaDeferredPrompt = e;
     showInstallBar();
+  }
+
+  if (isStandalone) localStorage.setItem(INSTALL_DONE_KEY, "1");
+
+  window.addEventListener("beforeinstallprompt", capturePrompt);
+  window.addEventListener("pwa-bip", () => {
+    if (window.__pwaDeferredPrompt) {
+      deferredPrompt = window.__pwaDeferredPrompt;
+      showInstallBar();
+    }
   });
 
   window.addEventListener("appinstalled", () => markInstalled());
@@ -1205,15 +1263,21 @@
       document.getElementById("modal-ios-install")?.showModal();
       return;
     }
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
+    const promptEvent = deferredPrompt || window.__pwaDeferredPrompt;
+    if (promptEvent) {
       try {
-        const choice = await deferredPrompt.userChoice;
+        promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
         if (choice.outcome === "accepted") markInstalled();
       } catch {
         /* ignore */
       }
       deferredPrompt = null;
+      window.__pwaDeferredPrompt = null;
+      return;
+    }
+    if (isAndroid) {
+      document.getElementById("modal-android-install")?.showModal();
       return;
     }
     document.getElementById("modal-win-install")?.showModal();

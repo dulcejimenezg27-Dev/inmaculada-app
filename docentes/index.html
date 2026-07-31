@@ -12,6 +12,15 @@
   <title>Inmaculada Docentes</title>
   <link rel="icon" type="image/png" href="image/icon-192.png" />
   <link rel="apple-touch-icon" href="image/icon-192.png" />
+  <script>
+    /* Captura temprana: beforeinstallprompt puede dispararse antes de admin.js (defer) */
+    window.__pwaDeferredPrompt = null;
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      window.__pwaDeferredPrompt = e;
+      window.dispatchEvent(new Event("pwa-bip"));
+    });
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -25,6 +34,24 @@
     </button>
     <button type="button" class="install-bar__close" id="btn-install-close" aria-label="Cerrar">×</button>
   </div>
+
+  <!-- Modal instalación Android -->
+  <dialog class="modal" id="modal-android-install">
+    <div class="modal__form">
+      <h2>Instalar en Android</h2>
+      <ol class="install-steps">
+        <li>Tocá el menú <strong>⋮</strong> de Chrome (arriba a la derecha).</li>
+        <li>Elegí <strong>Instalar aplicación</strong> o <strong>Añadir a pantalla de inicio</strong>.</li>
+        <li>Confirmá con <strong>Instalar</strong>.</li>
+      </ol>
+      <p class="help" style="margin:0;font-size:0.82rem">
+        Si no aparece la opción, abrí esta página en Chrome (no en Facebook/WhatsApp), recargá y volvé a intentar.
+      </p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--primary" data-close-modal="modal-android-install">Entendido</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Modal instalación iPhone -->
   <dialog class="modal" id="modal-ios-install">
@@ -169,7 +196,8 @@
         <input type="text" name="fotoUrl" inputmode="url" maxlength="500" placeholder="https://drive.google.com/file/d/..." />
       </label>
       <p class="help" style="margin:0;font-size:0.78rem">
-        Pegá un enlace directo a la imagen o de Google Drive (comparte como «Cualquier persona con el enlace»). Enlaces de perfiles de redes suelen no cargar; usá el enlace de la imagen.
+        Pegá el enlace de compartir de Drive (archivo → Compartir → «Cualquier persona con el enlace» → Visor). Ejemplo:
+        https://drive.google.com/file/d/ID/view?usp=sharing. Si no carga, abrí la imagen en una pestaña nueva y copiá esa URL, o usá un enlace directo .jpg/.png.
       </p>
       <p class="login__error" id="perfil-error" hidden></p>
       <div class="modal__actions">
@@ -214,7 +242,7 @@
         <input type="text" name="imagenDrive" inputmode="url" placeholder="https://drive.google.com/file/d/..." />
       </label>
       <p class="help" style="margin:0;font-size:0.78rem">
-        En Drive: comparte el archivo como «Cualquier persona con el enlace».
+        En Drive: comparte como «Cualquier persona con el enlace» → Visor. Pegá el enlace de compartir (file/d/.../view).
       </p>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" data-close-modal="modal-com">Cancelar</button>
