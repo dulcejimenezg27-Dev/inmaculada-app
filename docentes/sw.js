@@ -1,14 +1,13 @@
-/* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v9";
+/* Service Worker — Inmaculada Docentes PWA */
+const CACHE_NAME = "inmaculada-docentes-v1";
 const ASSETS = [
+  "./",
   "./index.html",
-  "./css/styles.css",
-  "./js/app.js",
+  "./css/admin.css",
+  "./js/admin.js",
   "./js/shared-content.js",
   "./manifest.json",
-  "./data/contenido.json",
   "./image/logoInmaculada.jpg",
-  "./image/fondoApp.jpeg",
   "./image/icon-192.png",
   "./image/icon-512.png",
 ];
@@ -18,11 +17,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) =>
-        Promise.all(
-          ASSETS.map((url) =>
-            cache.add(url).catch(() => undefined)
-          )
-        )
+        Promise.all(ASSETS.map((url) => cache.add(url).catch(() => undefined)))
       )
       .then(() => self.skipWaiting())
   );
@@ -43,13 +38,6 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  const url = new URL(request.url);
-
-  if (url.hostname.includes("psepagos.co") || url.hostname.includes("pse.com.co")) {
-    return;
-  }
-
-  // Navegación: network-first para no quedar pegado a HTML viejo
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -65,7 +53,7 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
+      const network = fetch(request)
         .then((response) => {
           if (response && response.status === 200 && response.type === "basic") {
             const clone = response.clone();
@@ -74,8 +62,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached);
-
-      return cached || fetchPromise;
+      return cached || network;
     })
   );
 });

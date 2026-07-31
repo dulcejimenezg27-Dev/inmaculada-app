@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Lectura pública (app de familias)
+    match /comunicados/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /puestos/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    // Autorización de docentes (tú creas/borras docs en Firebase Console)
+    // ID del documento = correo en minúsculas, ej. docente@colegio.edu.co
+    match /docentes_autorizados/{email} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

@@ -32,10 +32,13 @@ body {
   min-height: 100dvh;
   font-family: var(--font);
   color: var(--ink);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(0, 85, 164, 0.14), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(255, 210, 0, 0.18), transparent 50%),
-    linear-gradient(180deg, #f4f8fc 0%, #eef3f8 40%, #f7f9fc 100%);
+  background-color: #eef3f8;
+  background-image:
+    linear-gradient(180deg, rgba(244, 248, 252, 0.62) 0%, rgba(238, 243, 248, 0.68) 45%, rgba(247, 249, 252, 0.72) 100%),
+    url("../image/fondoApp.jpeg");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
   background-attachment: fixed;
   line-height: 1.5;
   padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 1rem);
@@ -677,6 +680,362 @@ body.has-install-bar .topbar {
   font-size: 1.15rem;
 }
 
+/* Puestos / cuadro de honor */
+.puestos-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.puestos-filters label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.puestos-filters select {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.puestos-board {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.puestos-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.puestos-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 0.7rem 0.9rem;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 85, 164, 0.06);
+}
+
+.puestos-card--1 {
+  order: 2;
+  border-color: rgba(255, 210, 0, 0.55);
+  box-shadow: 0 12px 32px rgba(230, 184, 0, 0.2);
+  padding-top: 1.25rem;
+}
+
+.puestos-card--2 {
+  order: 1;
+}
+
+.puestos-card--3 {
+  order: 3;
+}
+
+.puestos-card__photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 0.65rem;
+  background: var(--blue-soft);
+  border: 3px solid var(--blue);
+}
+
+.puestos-card--1 .puestos-card__photo {
+  width: 88px;
+  height: 88px;
+  border-color: var(--yellow-deep);
+}
+
+.puestos-card__photo--empty {
+  display: grid;
+  place-items: center;
+  color: var(--blue);
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.puestos-card__place {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-bottom: 0.4rem;
+}
+
+.puestos-card--1 .puestos-card__place {
+  background: var(--yellow);
+  color: var(--blue-deep);
+}
+
+.puestos-card--2 .puestos-card__place {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.puestos-card--3 .puestos-card__place {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.puestos-card__name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--blue-deep);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.puestos-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.puestos-list li {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.puestos-list li:last-child {
+  border-bottom: none;
+}
+
+.puestos-list__n {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.puestos-list__name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.puestos-meta {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.simbolos-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.simbolo-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.25rem 1.15rem;
+  text-align: center;
+}
+
+.simbolo-card__title {
+  margin: 0 0 0.45rem;
+  color: var(--blue-deep);
+  font-size: 1.15rem;
+}
+
+.simbolo-card__soon {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+@media (min-width: 640px) {
+  .simbolos-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.puestos-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.modal--puestos {
+  max-width: min(520px, calc(100vw - 1.5rem));
+  max-height: min(90dvh, 720px);
+}
+
+.modal--puestos .modal__form {
+  overflow-y: auto;
+  max-height: min(90dvh, 720px);
+}
+
+.puestos-form__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--blue-deep);
+}
+
+.puestos-top-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.puestos-top-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.puestos-medal {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  margin-top: 0.35rem;
+}
+
+.puestos-medal--1 {
+  background: var(--yellow);
+  color: var(--blue-deep);
+}
+
+.puestos-medal--2 {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.puestos-medal--3 {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.puestos-top-field__body {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.puestos-top-field__body input[type="text"] {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+}
+
+.photo-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.photo-pick input[type="file"] {
+  display: none;
+}
+
+.photo-pick__btn {
+  display: inline-flex;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  cursor: pointer;
+  border: 1px solid rgba(0, 85, 164, 0.15);
+}
+
+.photo-pick__preview {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--blue);
+}
+
+.puestos-rest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.puestos-rest-fields {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.puestos-rest-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.puestos-rest-row span {
+  font-weight: 800;
+  color: var(--blue);
+  text-align: center;
+}
+
+.puestos-rest-row input {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+
+.puestos-rest-row .btn-link {
+  padding: 0.35rem;
+}
+
+@media (max-width: 480px) {
+  .puestos-podium {
+    grid-template-columns: 1fr;
+  }
+
+  .puestos-card--1,
+  .puestos-card--2,
+  .puestos-card--3 {
+    order: unset;
+  }
+
+  .puestos-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Pagos */
 .pay {
   display: grid;
@@ -956,6 +1315,42 @@ body.has-install-bar .topbar {
   font-size: 0.95rem;
 }
 
+.media-embed {
+  margin-top: 0.85rem;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f172a;
+  border: 1px solid var(--line);
+}
+
+.media-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.media-image {
+  margin-top: 0.85rem;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--blue-soft);
+}
+
+.media-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 420px;
+  object-fit: contain;
+  background: #fff;
+}
+
 .feed-item__actions {
   margin-top: 0.75rem;
 }
@@ -1199,11 +1594,11 @@ body.has-install-bar .topbar {
   right: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--line);
-  padding: 0.4rem 0.35rem calc(0.4rem + var(--safe-bottom));
+  padding: 0.4rem 0.2rem calc(0.4rem + var(--safe-bottom));
   box-shadow: 0 -8px 30px rgba(0, 85, 164, 0.08);
 }
 
@@ -1313,7 +1708,7 @@ body.has-install-bar .topbar {
 
   .quick__grid {
     gap: 1rem;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .quick__item {

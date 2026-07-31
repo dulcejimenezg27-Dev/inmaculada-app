@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#003d78" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Inmaculada Admin" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Inmaculada Admin</title>
+  <link rel="icon" type="image/png" href="image/icon-192.png" />
+  <link rel="apple-touch-icon" href="image/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <link rel="stylesheet" href="../css/ayuda-nav.css" />
+</head>
+<body data-ayuda-app="admin" data-ayuda-img="../image/ayudas.jpeg">
+  <div id="install-bar" class="install-bar" hidden>
+    <button type="button" class="install-bar__btn" id="btn-install-app">
+      <span id="install-bar-label">Instalar Admin</span>
+    </button>
+    <button type="button" class="install-bar__close" id="btn-install-close" aria-label="Cerrar">×</button>
+  </div>
+
+  <!-- Modal instalación iPhone -->
+  <dialog class="modal" id="modal-ios-install">
+    <div class="modal__form">
+      <h2>Instalar en iPhone</h2>
+      <ol class="install-steps">
+        <li>Toca <strong>Compartir</strong> (cuadrado con flecha ↑)</li>
+        <li>Elige <strong>Añadir a pantalla de inicio</strong></li>
+        <li>Confirma con <strong>Añadir</strong></li>
+      </ol>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--primary" data-close-modal="modal-ios-install">Entendido</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal instalación Windows -->
+  <dialog class="modal" id="modal-win-install">
+    <div class="modal__form">
+      <h2>Instalar en Windows</h2>
+      <ol class="install-steps">
+        <li>Abre esta página en <strong>Chrome</strong> o <strong>Edge</strong>.</li>
+        <li>En la barra, pulsa el ícono <strong>Instalar</strong> o ve a menú ⋮ → <strong>Instalar Inmaculada Admin</strong>.</li>
+        <li>Confirma con <strong>Instalar</strong>.</li>
+      </ol>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--primary" data-close-modal="modal-win-install">Entendido</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- LOGIN -->
+  <section id="login-screen" class="login">
+    <div class="login__card">
+      <img src="image/logoInmaculada.jpg" alt="Logo" class="login__logo" width="88" height="88" />
+      <h1>Inmaculada Admin</h1>
+      <p>Acceso completo · comunicados, agenda, honor y publicar</p>
+      <form id="form-login" class="login__form">
+        <label>
+          Contraseña
+          <span class="password-field">
+            <input type="password" name="password" id="login-password" required autocomplete="current-password" placeholder="••••••••" />
+            <button type="button" class="password-toggle" id="btn-toggle-password" aria-label="Mostrar contraseña" aria-pressed="false">
+              Ver
+            </button>
+          </span>
+        </label>
+        <p class="login__error" id="login-error" hidden>Contraseña incorrecta</p>
+        <button type="submit" class="btn btn--primary">Entrar</button>
+      </form>
+      <a class="login__back" href="../index.html">← Volver a la app pública</a>
+    </div>
+  </section>
+
+  <!-- PANEL -->
+  <div id="admin-app" class="admin" hidden>
+    <header class="admin-top">
+      <div class="admin-top__brand">
+        <img src="image/logoInmaculada.jpg" alt="" width="40" height="40" />
+        <div>
+          <strong id="admin-role-label">Inmaculada Admin</strong>
+          <span id="admin-user-email">Inmaculada App</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" id="btn-logout">Salir</button>
+    </header>
+
+    <nav class="admin-tabs" aria-label="Secciones">
+      <button type="button" class="admin-tab is-active" data-tab="comunicados">Comunicados</button>
+      <button type="button" class="admin-tab" data-tab="agenda">Agenda</button>
+      <button type="button" class="admin-tab" data-tab="honor">Cuadro de honor</button>
+      <button type="button" class="admin-tab" data-tab="publicar">Publicar</button>
+    </nav>
+
+    <main class="admin-main">
+      <!-- Comunicados -->
+      <section id="tab-comunicados" class="admin-panel is-active">
+        <div class="panel-head">
+          <h2>Comunicados</h2>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-nuevo-com">Nuevo</button>
+        </div>
+        <div id="admin-lista-com" class="admin-list"></div>
+      </section>
+
+      <!-- Agenda -->
+      <section id="tab-agenda" class="admin-panel" hidden>
+        <div class="panel-head">
+          <h2>Agenda</h2>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-nuevo-ev">Nuevo evento</button>
+        </div>
+        <div id="admin-lista-ev" class="admin-list"></div>
+      </section>
+
+      <!-- Cuadro de honor -->
+      <section id="tab-honor" class="admin-panel" hidden>
+        <div class="panel-head">
+          <h2>Cuadro de honor</h2>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-nuevo-honor">Publicar</button>
+        </div>
+        <div class="filters-row">
+          <label>
+            Salón
+            <select id="admin-filtro-salon"></select>
+          </label>
+          <label>
+            Período
+            <select id="admin-filtro-periodo">
+              <option value="1">Primer período</option>
+              <option value="2">Segundo período</option>
+              <option value="3">Tercer período</option>
+              <option value="4">Cuarto período</option>
+            </select>
+          </label>
+        </div>
+        <div id="admin-honor-board" class="admin-honor"></div>
+      </section>
+
+      <!-- Publicar / sync -->
+      <section id="tab-publicar" class="admin-panel" hidden>
+        <h2>Publicar en la app</h2>
+        <p class="help">
+          Los cambios se guardan en este dispositivo. Los docentes publican a
+          <strong>Firestore</strong> desde <code>/docentes/</code>. Aquí puedes
+          <strong>descargar o importar</strong> <code>contenido.json</code> como respaldo
+          (agenda, comunicados y honor) para el proyecto o el hosting.
+        </p>
+        <div class="publish-actions">
+          <button type="button" class="btn btn--accent" id="btn-exportar">Descargar contenido.json</button>
+          <label class="btn btn--ghost file-btn">
+            Importar JSON
+            <input type="file" id="input-import" accept="application/json,.json" hidden />
+          </label>
+        </div>
+        <p class="help" id="publish-status"></p>
+        <a class="btn btn--primary" href="../index.html" target="_blank" rel="noopener">Ver app pública</a>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal comunicado -->
+  <dialog class="modal modal--wide" id="modal-com">
+    <form class="modal__form" id="form-com">
+      <h2 id="modal-com-title">Nuevo comunicado</h2>
+      <input type="hidden" name="id" />
+      <label>
+        Título
+        <input type="text" name="titulo" required maxlength="120" />
+      </label>
+      <label>
+        Categoría
+        <select name="categoria" required>
+          <option value="general">General</option>
+          <option value="academico">Académico</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </label>
+      <label>
+        Mensaje
+        <textarea name="mensaje" required rows="4" maxlength="800"></textarea>
+      </label>
+      <p class="hint">Multimedia (opcional)</p>
+      <label>
+        Video de YouTube (enlace)
+        <input type="url" name="videoYoutube" placeholder="https://www.youtube.com/watch?v=..." />
+      </label>
+      <label>
+        Video de Drive (enlace)
+        <input type="url" name="videoDrive" placeholder="https://drive.google.com/file/d/..." />
+      </label>
+      <label>
+        Imagen de Drive (enlace)
+        <input type="url" name="imagenDrive" placeholder="https://drive.google.com/file/d/..." />
+      </label>
+      <p class="help" style="margin:0;font-size:0.78rem">
+        En Drive: comparte el archivo como «Cualquier persona con el enlace».
+      </p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-com">Cancelar</button>
+        <button type="submit" class="btn btn--primary" value="guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal evento -->
+  <dialog class="modal" id="modal-ev">
+    <form class="modal__form" id="form-ev">
+      <h2 id="modal-ev-title">Nuevo evento</h2>
+      <input type="hidden" name="id" />
+      <label>
+        Título
+        <input type="text" name="titulo" required maxlength="100" />
+      </label>
+      <label>
+        Fecha
+        <input type="date" name="fecha" required />
+      </label>
+      <label>
+        Hora (opcional)
+        <input type="time" name="hora" />
+      </label>
+      <label>
+        Descripción
+        <textarea name="descripcion" rows="3" maxlength="400"></textarea>
+      </label>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-ev">Cancelar</button>
+        <button type="submit" class="btn btn--primary" value="guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal honor -->
+  <dialog class="modal modal--wide" id="modal-honor">
+    <form class="modal__form" id="form-honor">
+      <h2>Publicar cuadro de honor</h2>
+      <div class="row-2">
+        <label>
+          Salón
+          <select name="salon" id="form-honor-salon" required></select>
+        </label>
+        <label>
+          Período
+          <select name="periodo" required>
+            <option value="1">1° período</option>
+            <option value="2">2° período</option>
+            <option value="3">3° período</option>
+            <option value="4">4° período</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Top 3 — nombre y foto (Drive o subir archivo)</p>
+      <div id="honor-top-fields"></div>
+      <div class="rest-head">
+        <p class="hint">Demás estudiantes — solo nombres</p>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-add-rest">+ Agregar</button>
+      </div>
+      <div id="honor-rest-fields"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-honor">Cancelar</button>
+        <button type="submit" class="btn btn--primary" value="guardar">Publicar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <script src="../js/firebase-config.js"></script>
+  <script type="module" src="../js/firebase-init.js"></script>
+  <script src="js/shared-content.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="../js/ayuda-nav.js"></script>
+</body>
+</html>

@@ -15,9 +15,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/ayuda-nav.css" />
   <title>Colegio La Inmaculada</title>
 </head>
-<body>
+<body data-ayuda-app="publica" data-ayuda-img="image/ayudas.jpeg">
   <a class="skip-link" href="#main">Ir al contenido</a>
 
   <div id="install-bar" class="install-bar" hidden>
@@ -42,8 +43,10 @@
       <nav class="nav-desktop" aria-label="Principal">
         <a href="#inicio" data-nav="inicio" class="nav-link is-active">Inicio</a>
         <a href="#pagos" data-nav="pagos" class="nav-link">Pagos</a>
+        <a href="#puestos" data-nav="puestos" class="nav-link">Cuadro de honor</a>
         <a href="#comunicados" data-nav="comunicados" class="nav-link">Comunicados</a>
         <a href="#agenda" data-nav="agenda" class="nav-link">Agenda</a>
+        <a href="#simbolos" data-nav="simbolos" class="nav-link">Símbolos</a>
       </nav>
     </div>
   </header>
@@ -94,6 +97,18 @@
               <svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8a2 2 0 012 2v14l-6-3-6 3V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 9h6M9 13h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </span>
             <span class="quick__label">Pruebas parciales</span>
+          </a>
+          <a href="#puestos" data-nav="puestos" class="quick__item">
+            <span class="quick__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 20V10M12 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </span>
+            <span class="quick__label">Cuadro de honor</span>
+          </a>
+          <a href="#simbolos" data-nav="simbolos" class="quick__item">
+            <span class="quick__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h9v11H5V4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 6h5v7l-2.5-1.5L14 13V6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 20v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </span>
+            <span class="quick__label">Símbolos institucionales</span>
           </a>
         </div>
       </div>
@@ -209,8 +224,6 @@
                 Grado
                 <select name="grado" required>
                   <option value="">Selecciona el grado</option>
-                  <option value="Prejardín">Prejardín</option>
-                  <option value="Jardín">Jardín</option>
                   <option value="Transición">Transición</option>
                   <option value="1">1°</option>
                   <option value="2">2°</option>
@@ -251,12 +264,11 @@
 
     <!-- COMUNICADOS -->
     <section id="comunicados" class="view" aria-labelledby="comunicados-title" hidden>
-      <header class="view__header view__header--row">
+      <header class="view__header">
         <div>
           <h1 id="comunicados-title" class="view__title">Comunicados</h1>
           <p class="view__subtitle">Información oficial para familias y estudiantes.</p>
         </div>
-        <button type="button" class="btn btn--primary btn--sm" id="btn-nuevo-comunicado">Nuevo</button>
       </header>
 
       <div class="filters" role="group" aria-label="Filtrar comunicados">
@@ -271,12 +283,11 @@
 
     <!-- AGENDA -->
     <section id="agenda" class="view" aria-labelledby="agenda-title" hidden>
-      <header class="view__header view__header--row">
+      <header class="view__header">
         <div>
           <h1 id="agenda-title" class="view__title">Agenda escolar</h1>
           <p class="view__subtitle">Eventos, fechas clave y actividades del colegio.</p>
         </div>
-        <button type="button" class="btn btn--primary btn--sm" id="btn-nuevo-evento">Nuevo</button>
       </header>
 
       <div class="agenda-toolbar">
@@ -287,6 +298,57 @@
 
       <div class="calendar" id="calendario" aria-label="Calendario mensual"></div>
       <div id="lista-eventos" class="event-list" aria-live="polite"></div>
+    </section>
+
+    <!-- PUESTOS / CUADRO DE HONOR -->
+    <section id="puestos" class="view" aria-labelledby="puestos-title" hidden>
+      <header class="view__header">
+        <div>
+          <h1 id="puestos-title" class="view__title">Cuadro de honor</h1>
+          <p class="view__subtitle">Destacados de cada salón por período académico.</p>
+        </div>
+      </header>
+
+      <div class="puestos-filters">
+        <label>
+          Salón
+          <select id="filtro-salon"></select>
+        </label>
+        <label>
+          Período
+          <select id="filtro-periodo">
+            <option value="1">Primer período</option>
+            <option value="2">Segundo período</option>
+            <option value="3">Tercer período</option>
+            <option value="4">Cuarto período</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="puestos-board" class="puestos-board" aria-live="polite"></div>
+    </section>
+
+    <!-- SÍMBOLOS INSTITUCIONALES -->
+    <section id="simbolos" class="view" aria-labelledby="simbolos-title" hidden>
+      <header class="view__header">
+        <h1 id="simbolos-title" class="view__title">Símbolos institucionales</h1>
+        <p class="view__subtitle">Bandera, escudo e himno del Colegio La Inmaculada.</p>
+      </header>
+
+      <div class="simbolos-grid">
+        <article class="simbolo-card">
+          <h2 class="simbolo-card__title">Bandera</h2>
+          <p class="simbolo-card__soon">Próximamente</p>
+        </article>
+        <article class="simbolo-card">
+          <h2 class="simbolo-card__title">Escudo</h2>
+          <p class="simbolo-card__soon">Próximamente</p>
+        </article>
+        <article class="simbolo-card">
+          <h2 class="simbolo-card__title">Himno</h2>
+          <p class="simbolo-card__soon">Próximamente</p>
+        </article>
+      </div>
     </section>
   </main>
 
@@ -299,6 +361,10 @@
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16v10H4V7z" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M8 14h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <span>Pagos</span>
     </a>
+    <a href="#puestos" data-nav="puestos" class="nav-mobile__item">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 20V10M12 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Honor</span>
+    </a>
     <a href="#comunicados" data-nav="comunicados" class="nav-mobile__item">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6h14v11H8l-3 3V6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span>Avisos</span>
@@ -308,60 +374,6 @@
       <span>Agenda</span>
     </a>
   </nav>
-
-  <!-- Modal comunicados -->
-  <dialog class="modal" id="modal-comunicado" aria-labelledby="modal-com-title">
-    <form method="dialog" class="modal__form" id="form-comunicado">
-      <h2 id="modal-com-title">Nuevo comunicado</h2>
-      <label>
-        Título
-        <input type="text" name="titulo" required maxlength="120" placeholder="Ej. Reunión de padres" />
-      </label>
-      <label>
-        Categoría
-        <select name="categoria" required>
-          <option value="general">General</option>
-          <option value="academico">Académico</option>
-          <option value="urgente">Urgente</option>
-        </select>
-      </label>
-      <label>
-        Mensaje
-        <textarea name="mensaje" required rows="4" maxlength="800" placeholder="Escribe el contenido del comunicado..."></textarea>
-      </label>
-      <div class="modal__actions">
-        <button type="submit" class="btn btn--ghost" value="cancel">Cancelar</button>
-        <button type="submit" class="btn btn--primary" value="guardar" id="btn-guardar-comunicado">Publicar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Modal eventos -->
-  <dialog class="modal" id="modal-evento" aria-labelledby="modal-ev-title">
-    <form method="dialog" class="modal__form" id="form-evento">
-      <h2 id="modal-ev-title">Nuevo evento</h2>
-      <label>
-        Título
-        <input type="text" name="titulo" required maxlength="100" placeholder="Ej. Izada de bandera" />
-      </label>
-      <label>
-        Fecha
-        <input type="date" name="fecha" required />
-      </label>
-      <label>
-        Hora (opcional)
-        <input type="time" name="hora" />
-      </label>
-      <label>
-        Descripción
-        <textarea name="descripcion" rows="3" maxlength="400" placeholder="Detalles del evento..."></textarea>
-      </label>
-      <div class="modal__actions">
-        <button type="submit" class="btn btn--ghost" value="cancel">Cancelar</button>
-        <button type="submit" class="btn btn--primary" value="guardar" id="btn-guardar-evento">Guardar</button>
-      </div>
-    </form>
-  </dialog>
 
   <!-- Modal instalación iPhone -->
   <dialog class="modal modal--install" id="modal-ios-install" aria-labelledby="modal-ios-title">
@@ -428,6 +440,10 @@
     <p class="footer__feria">XVIII EDICIÓN FERIA DE LA CIENCIA, TECNOLOGÍA Y ARTE</p>
   </footer>
 
+  <script src="js/firebase-config.js"></script>
+  <script type="module" src="js/firebase-init.js"></script>
+  <script src="js/shared-content.js"></script>
   <script src="js/app.js" defer></script>
+  <script src="js/ayuda-nav.js" defer></script>
 </body>
 </html>

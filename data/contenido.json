@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-30T00:00:00.000Z",
+  "comunicados": [
+    {
+      "id": "c1",
+      "titulo": "Bienvenida al año escolar 2026",
+      "mensaje": "Con alegría damos la bienvenida a toda la comunidad educativa. Juntos formamos en valores y desarrollo humano.",
+      "categoria": "general",
+      "fecha": "2026-01-20"
+    },
+    {
+      "id": "c2",
+      "titulo": "Entrega de boletines — Primer período",
+      "mensaje": "La entrega de boletines se realizará en la sede principal. Los horarios por grado serán publicados oportunamente.",
+      "categoria": "academico",
+      "fecha": "2026-04-10"
+    },
+    {
+      "id": "c3",
+      "titulo": "Recordatorio: pago de pensión",
+      "mensaje": "Recuerda realizar el pago de pensión a tiempo a través del botón PSE disponible en esta aplicación.",
+      "categoria": "urgente",
+      "fecha": "2026-07-15"
+    }
+  ],
+  "eventos": [
+    {
+      "id": "e1",
+      "titulo": "Inicio de clases",
+      "fecha": "2026-01-27",
+      "hora": "07:00",
+      "descripcion": "Bienvenida a estudiantes y familias."
+    },
+    {
+      "id": "e2",
+      "titulo": "Izada de bandera",
+      "fecha": "2026-08-07",
+      "hora": "08:00",
+      "descripcion": "Acto cívico en el patio principal."
+    },
+    {
+      "id": "e3",
+      "titulo": "Día de la familia",
+      "fecha": "2026-09-12",
+      "hora": "09:00",
+      "descripcion": "Actividades recreativas y formativas."
+    },
+    {
+      "id": "e4",
+      "titulo": "Reunión de padres de familia",
+      "fecha": "2026-07-30",
+      "hora": "14:00",
+      "descripcion": "Información académica y convivencia."
+    }
+  ],
+  "puestos": {}
+}

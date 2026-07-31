@@ -1,14 +1,17 @@
-/* Colegio La Inmaculada — lógica de la app */
+/* Colegio La Inmaculada — lógica de la app pública (solo lectura de contenidos) */
 (() => {
   "use strict";
 
+  const C = window.InmaculadaContent;
   const PSE_URL =
     "https://www.psepagos.co/PSEHostingUI/ShowTicketOffice.aspx?ID=13330";
   const WA_NUMBER = "573216507398";
 
-  const STORAGE = {
-    comunicados: "inmaculada_comunicados",
-    eventos: "inmaculada_eventos",
+  const PERIODOS_LABEL = C?.PERIODOS_LABEL || {
+    1: "Primer período",
+    2: "Segundo período",
+    3: "Tercer período",
+    4: "Cuarto período",
   };
 
   const MESES = [
@@ -21,92 +24,42 @@
   ];
   const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-  const seedComunicados = [
-    {
-      id: "c1",
-      titulo: "Bienvenida al año escolar 2026",
-      mensaje:
-        "Con alegría damos la bienvenida a toda la comunidad educativa. Juntos formamos en valores y desarrollo humano.",
-      categoria: "general",
-      fecha: "2026-01-20",
-    },
-    {
-      id: "c2",
-      titulo: "Entrega de boletines — Primer período",
-      mensaje:
-        "La entrega de boletines se realizará en la sede principal. Los horarios por grado serán publicados oportunamente.",
-      categoria: "academico",
-      fecha: "2026-04-10",
-    },
-    {
-      id: "c3",
-      titulo: "Recordatorio: pago de pensión",
-      mensaje:
-        "Recuerda realizar el pago de pensión a tiempo a través del botón PSE disponible en esta aplicación.",
-      categoria: "urgente",
-      fecha: "2026-07-15",
-    },
-  ];
-
-  const seedEventos = [
-    {
-      id: "e1",
-      titulo: "Inicio de clases",
-      fecha: "2026-01-27",
-      hora: "07:00",
-      descripcion: "Bienvenida a estudiantes y familias.",
-    },
-    {
-      id: "e2",
-      titulo: "Izada de bandera",
-      fecha: "2026-08-07",
-      hora: "08:00",
-      descripcion: "Acto cívico en el patio principal.",
-    },
-    {
-      id: "e3",
-      titulo: "Día de la familia",
-      fecha: "2026-09-12",
-      hora: "09:00",
-      descripcion: "Actividades recreativas y formativas.",
-    },
-    {
-      id: "e4",
-      titulo: "Reunión de padres de familia",
-      fecha: "2026-07-30",
-      hora: "14:00",
-      descripcion: "Información académica y convivencia.",
-    },
-  ];
-
-  let comunicados = load(STORAGE.comunicados, seedComunicados);
-  let eventos = load(STORAGE.eventos, seedEventos);
+  let comunicados = C
+    ? C.load(C.STORAGE.comunicados, C.seedComunicados)
+    : [];
+  let eventos = C ? C.load(C.STORAGE.eventos, C.seedEventos) : [];
+  let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
   let filtro = "todos";
   let mesActual = new Date();
   mesActual.setDate(1);
   let diaSeleccionado = null;
 
-  function load(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return structuredClone(fallback);
-      return JSON.parse(raw);
-    } catch {
-      return structuredClone(fallback);
-    }
-  }
-
-  function save(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  function uid(prefix) {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  function reloadFromStorage() {
+    if (!C) return;
+    comunicados = C.load(C.STORAGE.comunicados, C.seedComunicados);
+    eventos = C.load(C.STORAGE.eventos, C.seedEventos);
+    puestosMap = C.load(C.STORAGE.puestos, {});
   }
 
   function formatFecha(iso) {
     const [y, m, d] = iso.split("-").map(Number);
     return `${d} de ${MESES[m - 1]} de ${y}`;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function uid(prefix) {
+    return C ? C.uid(prefix) : `${prefix}_${Date.now()}`;
+  }
+
+  function listaSalones() {
+    return C ? C.listaSalones() : [];
   }
 
   /* Navegación */
@@ -124,13 +77,16 @@
 
     if (name === "comunicados") renderComunicados();
     if (name === "agenda") renderAgenda();
+    if (name === "puestos") renderPuestos();
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function currentHash() {
     const h = (location.hash || "#inicio").replace("#", "");
-    return ["inicio", "pagos", "comunicados", "agenda"].includes(h) ? h : "inicio";
+    return ["inicio", "pagos", "comunicados", "agenda", "puestos", "simbolos"].includes(h)
+      ? h
+      : "inicio";
   }
 
   document.querySelectorAll("[data-nav]").forEach((el) => {
@@ -148,7 +104,7 @@
 
   window.addEventListener("hashchange", () => showView(currentHash()));
 
-  /* Comunicados */
+  /* Comunicados (solo lectura) */
   function renderComunicados() {
     const list = document.getElementById("lista-comunicados");
     const items = comunicados
@@ -170,9 +126,7 @@
         </div>
         <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
         <p class="feed-item__body">${escapeHtml(c.mensaje)}</p>
-        <div class="feed-item__actions">
-          <button type="button" class="btn-link" data-delete-com="${c.id}">Eliminar</button>
-        </div>
+        ${C && C.mediaHtml ? C.mediaHtml(c) : ""}
       </article>`
       )
       .join("");
@@ -185,50 +139,6 @@
     document.querySelectorAll(".chip").forEach((c) => {
       c.classList.toggle("is-active", c === btn);
     });
-    renderComunicados();
-  });
-
-  document.getElementById("lista-comunicados")?.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-delete-com]");
-    if (!btn) return;
-    const id = btn.getAttribute("data-delete-com");
-    if (!confirm("¿Eliminar este comunicado?")) return;
-    comunicados = comunicados.filter((c) => c.id !== id);
-    save(STORAGE.comunicados, comunicados);
-    renderComunicados();
-  });
-
-  const modalCom = document.getElementById("modal-comunicado");
-  const formCom = document.getElementById("form-comunicado");
-
-  document.getElementById("btn-nuevo-comunicado")?.addEventListener("click", () => {
-    formCom.reset();
-    modalCom.showModal();
-  });
-
-  formCom?.addEventListener("submit", (e) => {
-    const submitter = e.submitter;
-    if (!submitter || submitter.value === "cancel") return;
-
-    e.preventDefault();
-    const data = new FormData(formCom);
-    const titulo = String(data.get("titulo") || "").trim();
-    const mensaje = String(data.get("mensaje") || "").trim();
-    const categoria = String(data.get("categoria") || "general");
-    if (!titulo || !mensaje) return;
-
-    const hoy = new Date();
-    const fecha = hoy.toISOString().slice(0, 10);
-
-    comunicados.unshift({
-      id: uid("c"),
-      titulo,
-      mensaje,
-      categoria,
-      fecha,
-    });
-    save(STORAGE.comunicados, comunicados);
-    modalCom.close();
     renderComunicados();
   });
 
@@ -298,7 +208,7 @@
       list.innerHTML = `<div class="empty">${
         diaSeleccionado
           ? "No hay eventos en esta fecha."
-          : "No hay eventos este mes. Agrega uno con el botón Nuevo."
+          : "No hay eventos este mes."
       }</div>`;
       return;
     }
@@ -318,7 +228,6 @@
             ${ev.descripcion ? `<p class="event-item__desc">${escapeHtml(ev.descripcion)}</p>` : ""}
             ${ev.hora ? `<span class="event-item__time">${ev.hora}</span>` : ""}
           </div>
-          <button type="button" class="btn-link" data-delete-ev="${ev.id}">Eliminar</button>
         </article>`;
       })
       .join("");
@@ -349,63 +258,80 @@
     renderAgenda();
   });
 
-  document.getElementById("lista-eventos")?.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-delete-ev]");
-    if (!btn) return;
-    const id = btn.getAttribute("data-delete-ev");
-    if (!confirm("¿Eliminar este evento?")) return;
-    eventos = eventos.filter((ev) => ev.id !== id);
-    save(STORAGE.eventos, eventos);
-    renderAgenda();
-  });
-
-  const modalEv = document.getElementById("modal-evento");
-  const formEv = document.getElementById("form-evento");
-
-  document.getElementById("btn-nuevo-evento")?.addEventListener("click", () => {
-    formEv.reset();
-    const dateInput = formEv.querySelector('[name="fecha"]');
-    if (dateInput) {
-      dateInput.value = diaSeleccionado || new Date().toISOString().slice(0, 10);
-    }
-    modalEv.showModal();
-  });
-
-  formEv?.addEventListener("submit", (e) => {
-    const submitter = e.submitter;
-    if (!submitter || submitter.value === "cancel") return;
-
-    e.preventDefault();
-    const data = new FormData(formEv);
-    const titulo = String(data.get("titulo") || "").trim();
-    const fecha = String(data.get("fecha") || "");
-    const hora = String(data.get("hora") || "");
-    const descripcion = String(data.get("descripcion") || "").trim();
-    if (!titulo || !fecha) return;
-
-    eventos.push({
-      id: uid("e"),
-      titulo,
-      fecha,
-      hora,
-      descripcion,
-    });
-    save(STORAGE.eventos, eventos);
-
-    const [y, m] = fecha.split("-").map(Number);
-    mesActual = new Date(y, m - 1, 1);
-    diaSeleccionado = fecha;
-    modalEv.close();
-    renderAgenda();
-  });
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  /* Cuadro de honor (solo lectura) */
+  function puestosKey(salon, periodo) {
+    return `${salon}|${periodo}`;
   }
+
+  function fillSalonSelects() {
+    const options = listaSalones()
+      .map((s) => `<option value="${s}">${s}</option>`)
+      .join("");
+    const filtroSalon = document.getElementById("filtro-salon");
+    if (filtroSalon) {
+      filtroSalon.innerHTML = options;
+      if (!filtroSalon.value) filtroSalon.value = "7-B";
+    }
+  }
+
+  function renderPuestos() {
+    const board = document.getElementById("puestos-board");
+    const salon = document.getElementById("filtro-salon")?.value;
+    const periodo = document.getElementById("filtro-periodo")?.value;
+    if (!board || !salon || !periodo) return;
+
+    const data = puestosMap[puestosKey(salon, periodo)];
+    if (!data || !data.top?.length) {
+      board.innerHTML = `
+        <div class="empty">
+          Aún no hay cuadro de honor publicado para <strong>${escapeHtml(salon)}</strong>
+          — ${escapeHtml(PERIODOS_LABEL[periodo] || periodo)}.
+        </div>`;
+      return;
+    }
+
+    const topHtml = data.top
+      .map((est, i) => {
+        const place = i + 1;
+        const photoSrc =
+          est.foto && C?.driveImageUrl && !String(est.foto).startsWith("data:")
+            ? C.driveImageUrl(est.foto) || est.foto
+            : est.foto || "";
+        const photo = photoSrc
+          ? `<img class="puestos-card__photo" src="${photoSrc}" alt="${escapeHtml(est.nombre)}" />`
+          : `<div class="puestos-card__photo puestos-card__photo--empty" aria-hidden="true">${place}</div>`;
+        return `
+          <article class="puestos-card puestos-card--${place}">
+            ${photo}
+            <span class="puestos-card__place">${place}° lugar</span>
+            <h3 class="puestos-card__name">${escapeHtml(est.nombre)}</h3>
+          </article>`;
+      })
+      .join("");
+
+    const rest = data.rest || [];
+    const restHtml = rest.length
+      ? `<ol class="puestos-list">
+          ${rest
+            .map(
+              (est, i) => `
+            <li>
+              <span class="puestos-list__n">${i + 4}</span>
+              <span class="puestos-list__name">${escapeHtml(est.nombre)}</span>
+            </li>`
+            )
+            .join("")}
+        </ol>`
+      : "";
+
+    board.innerHTML = `
+      <p class="puestos-meta">${escapeHtml(salon)} · ${escapeHtml(PERIODOS_LABEL[periodo])}</p>
+      <div class="puestos-podium">${topHtml}</div>
+      ${restHtml}`;
+  }
+
+  document.getElementById("filtro-salon")?.addEventListener("change", renderPuestos);
+  document.getElementById("filtro-periodo")?.addEventListener("change", renderPuestos);
 
   /* PWA */
   if ("serviceWorker" in navigator) {
@@ -566,8 +492,6 @@
   }
 
   function formatGradoGrupo(grado, grupo) {
-    const preescolar = ["Prejardín", "Jardín", "Transición"];
-    if (preescolar.includes(grado)) return `${grado}-${grupo}`;
     return `${grado}-${grupo}`;
   }
 
@@ -631,5 +555,54 @@
   if (pseBtn) pseBtn.href = PSE_URL;
 
   fillMesPagoSelect();
-  showView(currentHash());
+  fillSalonSelects();
+
+  async function boot() {
+    if (C) {
+      await C.hydrateFromFile("./data/contenido.json");
+      reloadFromStorage();
+    }
+
+    function attachFirebase() {
+      const FB = window.InmaculadaFirebase;
+      if (!FB?.configured) {
+        showView(currentHash());
+        return;
+      }
+
+      FB.watchComunicados((items) => {
+        comunicados = items;
+        if (C) C.save(C.STORAGE.comunicados, comunicados);
+        if (currentHash() === "comunicados") renderComunicados();
+      });
+
+      FB.watchPuestos((map) => {
+        puestosMap = map;
+        if (C) C.save(C.STORAGE.puestos, puestosMap);
+        if (currentHash() === "puestos") renderPuestos();
+      });
+
+      showView(currentHash());
+    }
+
+    if (window.InmaculadaFirebase) attachFirebase();
+    else {
+      window.addEventListener("inmaculada-firebase-ready", attachFirebase, { once: true });
+      // Si Firebase tarda, igual mostramos la vista con datos locales
+      showView(currentHash());
+    }
+  }
+
+  window.addEventListener("storage", (e) => {
+    if (!e.key || !C) return;
+    const keys = Object.values(C.STORAGE);
+    if (!keys.includes(e.key)) return;
+    reloadFromStorage();
+    const view = currentHash();
+    if (view === "comunicados") renderComunicados();
+    if (view === "agenda") renderAgenda();
+    if (view === "puestos") renderPuestos();
+  });
+
+  boot();
 })();
