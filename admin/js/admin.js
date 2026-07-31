@@ -216,7 +216,7 @@
   document.getElementById("btn-nuevo-com")?.addEventListener("click", () => {
     const form = document.getElementById("form-com");
     form.reset();
-    form.id.value = "";
+    form.recordId.value = "";
     document.getElementById("modal-com-title").textContent = "Nuevo comunicado";
     document.getElementById("modal-com").showModal();
   });
@@ -228,7 +228,7 @@
       const item = comunicados.find((c) => c.id === edit.getAttribute("data-edit-com"));
       if (!item) return;
       const form = document.getElementById("form-com");
-      form.id.value = item.id;
+      form.recordId.value = item.id;
       form.titulo.value = item.titulo;
       form.categoria.value = item.categoria;
       form.mensaje.value = item.mensaje;
@@ -251,7 +251,8 @@
   document.getElementById("form-com")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const id = form.id.value;
+    const btn = form.querySelector('button[type="submit"]');
+    const id = String(form.recordId.value || "").trim();
     const titulo = form.titulo.value.trim();
     const mensaje = form.mensaje.value.trim();
     const categoria = form.categoria.value;
@@ -260,39 +261,51 @@
     const imagenDrive = form.imagenDrive.value.trim();
     if (!titulo || !mensaje) return;
 
-    let item;
-    if (id) {
-      item = comunicados.find((c) => c.id === id);
-      if (item) {
-        item.titulo = titulo;
-        item.mensaje = mensaje;
-        item.categoria = categoria;
-        item.videoYoutube = videoYoutube;
-        item.videoDrive = videoDrive;
-        item.imagenDrive = imagenDrive;
-        item.updatedAt = new Date().toISOString();
-        item.updatedBy = "admin";
-      }
-    } else {
-      item = {
-        id: C ? C.uid("c") : `c_${Date.now()}`,
-        titulo,
-        mensaje,
-        categoria,
-        videoYoutube,
-        videoDrive,
-        imagenDrive,
-        fecha: new Date().toISOString().slice(0, 10),
-        createdBy: "admin",
-        updatedAt: new Date().toISOString(),
-      };
-      comunicados.unshift(item);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Guardando…";
     }
 
-    await persistLocal();
-    await tryCloudWrite(() => FB.saveComunicado(item));
-    document.getElementById("modal-com").close();
-    renderComunicados();
+    let item;
+    try {
+      if (id) {
+        item = comunicados.find((c) => c.id === id);
+        if (item) {
+          item.titulo = titulo;
+          item.mensaje = mensaje;
+          item.categoria = categoria;
+          item.videoYoutube = videoYoutube;
+          item.videoDrive = videoDrive;
+          item.imagenDrive = imagenDrive;
+          item.updatedAt = new Date().toISOString();
+          item.updatedBy = "admin";
+        }
+      } else {
+        item = {
+          id: C ? C.uid("c") : `c_${Date.now()}`,
+          titulo,
+          mensaje,
+          categoria,
+          videoYoutube,
+          videoDrive,
+          imagenDrive,
+          fecha: new Date().toISOString().slice(0, 10),
+          createdBy: "admin",
+          updatedAt: new Date().toISOString(),
+        };
+        comunicados.unshift(item);
+      }
+
+      await persistLocal();
+      await tryCloudWrite(() => FB.saveComunicado(item));
+      document.getElementById("modal-com").close();
+      renderComunicados();
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Guardar";
+      }
+    }
   });
 
   /* Agenda */
@@ -326,7 +339,7 @@
   document.getElementById("btn-nuevo-ev")?.addEventListener("click", () => {
     const form = document.getElementById("form-ev");
     form.reset();
-    form.id.value = "";
+    form.recordId.value = "";
     form.fecha.value = new Date().toISOString().slice(0, 10);
     document.getElementById("modal-ev-title").textContent = "Nuevo evento";
     document.getElementById("modal-ev").showModal();
@@ -339,7 +352,7 @@
       const item = eventos.find((ev) => ev.id === edit.getAttribute("data-edit-ev"));
       if (!item) return;
       const form = document.getElementById("form-ev");
-      form.id.value = item.id;
+      form.recordId.value = item.id;
       form.titulo.value = item.titulo;
       form.fecha.value = item.fecha;
       form.hora.value = item.hora || "";
@@ -359,7 +372,7 @@
   document.getElementById("form-ev")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const id = form.id.value;
+    const id = String(form.recordId.value || "").trim();
     const titulo = form.titulo.value.trim();
     const fecha = form.fecha.value;
     const hora = form.hora.value;
@@ -465,7 +478,7 @@
         <span class="medal medal--${n}">${n}°</span>
         <div class="top-body">
           <input type="text" name="nombre${n}" required maxlength="120" placeholder="Nombre y apellidos" />
-          <input type="url" name="fotoDrive${n}" placeholder="Link de foto en Drive (opcional)" />
+          <input type="text" name="fotoDrive${n}" inputmode="url" placeholder="Link de foto en Drive (opcional)" />
           <label class="photo-pick">
             <input type="file" name="foto${n}" accept="image/*" />
             <span>O subir foto</span>

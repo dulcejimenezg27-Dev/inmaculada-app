@@ -93,6 +93,11 @@ body {
 
 .btn--primary:hover { background: var(--blue-deep); }
 
+.btn--primary:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .btn--accent {
   background: linear-gradient(135deg, var(--yellow), #e6b800);
   color: var(--blue-deep);
