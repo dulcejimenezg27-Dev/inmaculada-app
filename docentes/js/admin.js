@@ -108,18 +108,95 @@
     if (pass) pass.disabled = !!busy;
   }
 
+  const PENDING_COMS_KEY = "inmaculada_pending_comunicados";
+  const PENDING_DEL_COMS_KEY = "inmaculada_pending_del_comunicados";
+
+  function loadPendingComs() {
+    try {
+      return JSON.parse(localStorage.getItem(PENDING_COMS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function savePendingComs(list) {
+    localStorage.setItem(PENDING_COMS_KEY, JSON.stringify(list || []));
+  }
+
+  function loadPendingDelComs() {
+    try {
+      return JSON.parse(localStorage.getItem(PENDING_DEL_COMS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function savePendingDelComs(list) {
+    localStorage.setItem(PENDING_DEL_COMS_KEY, JSON.stringify(list || []));
+  }
+
+  function queuePendingCom(item) {
+    const list = loadPendingComs().filter((c) => c.id !== item.id);
+    list.push(item);
+    savePendingComs(list);
+  }
+
+  function queuePendingDelCom(id) {
+    const dels = new Set(loadPendingDelComs());
+    dels.add(id);
+    savePendingDelComs([...dels]);
+    savePendingComs(loadPendingComs().filter((c) => c.id !== id));
+  }
+
+  async function flushPendingComs() {
+    if (!FB?.configured || !FB.auth?.currentUser) return;
+    const pending = loadPendingComs();
+    const dels = loadPendingDelComs();
+    for (const id of dels) {
+      try {
+        await FB.removeComunicado(id);
+      } catch (err) {
+        console.error("Pendiente eliminar:", err);
+        return;
+      }
+    }
+    savePendingDelComs([]);
+    for (const item of pending) {
+      try {
+        await FB.saveComunicado(item);
+      } catch (err) {
+        console.error("Pendiente guardar:", err);
+        return;
+      }
+    }
+    savePendingComs([]);
+  }
+
   async function loadCloudData() {
     if (!FB?.configured) return;
     try {
+      await flushPendingComs();
       const [coms, puestos] = await Promise.all([
         FB.fetchComunicados(),
         FB.fetchPuestosMap(),
       ]);
-      if (Array.isArray(coms)) comunicados = coms;
+      if (Array.isArray(coms)) {
+        const pending = loadPendingComs();
+        if (pending.length) {
+          const map = new Map(coms.map((c) => [c.id, c]));
+          pending.forEach((p) => map.set(p.id, p));
+          comunicados = [...map.values()].sort((a, b) =>
+            String(b.fecha || "").localeCompare(String(a.fecha || ""))
+          );
+        } else {
+          comunicados = coms;
+        }
+      }
       if (puestos && typeof puestos === "object") puestosMap = puestos;
       await persistLocal();
     } catch (err) {
       console.error(err);
+      // Mantener datos locales si la nube falla
     }
   }
 
@@ -147,6 +224,33 @@
     }
   }
 
+  async function enterAs(user) {
+    if (!user) {
+      currentUser = null;
+      isFullAdmin = false;
+      setLoginBusy(false);
+      showApp(false);
+      return;
+    }
+    FB = window.InmaculadaFirebase || FB;
+    const ok = await ensureAuthorized(user);
+    if (!ok) {
+      currentUser = null;
+      isFullAdmin = false;
+      setLoginBusy(false);
+      showApp(false);
+      return;
+    }
+    currentUser = user;
+    isFullAdmin = !!(user && FB.isAdminEmail(user.email));
+    clearLoginError();
+    showApp(true);
+    loadCloudData().then(() => {
+      renderComunicados();
+      renderHonor();
+    });
+  }
+
   document.getElementById("btn-toggle-password")?.addEventListener("click", () => {
     const input = document.getElementById("login-password");
     const btn = document.getElementById("btn-toggle-password");
@@ -172,8 +276,9 @@
     clearLoginError();
     setLoginBusy(true);
     try {
-      await FB.signIn(email, pass);
-      // onAuth abre el panel; la nube se carga en segundo plano
+      if (FB.whenReady) await FB.whenReady();
+      const cred = await FB.signIn(email, pass);
+      await enterAs(cred.user);
     } catch (ex) {
       setLoginBusy(false);
       showLoginError(authErrorMessage(ex.code, ex.message));
@@ -202,30 +307,14 @@
     }
 
     FB.onAuth(async (user) => {
-      if (user) {
-        const ok = await ensureAuthorized(user);
-        if (!ok) {
-          currentUser = null;
-          isFullAdmin = false;
-          setLoginBusy(false);
-          showApp(false);
-          return;
-        }
-        currentUser = user;
-        isFullAdmin = !!(user && FB.isAdminEmail(user.email));
-        clearLoginError();
-        // Entrar de inmediato con datos locales; sincronizar nube después
-        showApp(true);
-        loadCloudData().then(() => {
-          renderComunicados();
-          renderHonor();
-        });
-      } else {
-        currentUser = null;
-        isFullAdmin = false;
-        setLoginBusy(false);
+      // Solo restaurar sesión automática (p. ej. al refrescar).
+      // El login manual ya llama enterAs.
+      if (user && currentUser?.uid === user.uid) return;
+      if (!user && !currentUser) {
         showApp(false);
+        return;
       }
+      await enterAs(user);
     });
   }
 
@@ -325,18 +414,18 @@
       if (!confirm("¿Eliminar este comunicado?")) return;
       comunicados = comunicados.filter((c) => c.id !== id);
       persistLocal();
-      if (FB?.configured) {
-        FB.removeComunicado(id).catch((err) => {
-          console.error(err);
-          alert("No se pudo eliminar en la nube. Revisa tu conexión.");
-        });
-      }
+      queuePendingDelCom(id);
       renderComunicados();
+      flushPendingComs().catch((err) => {
+        console.error(err);
+        alert("No se pudo eliminar en la nube. Quedó pendiente y se reintentará.");
+      });
     }
   });
 
   document.getElementById("form-com")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    FB = window.InmaculadaFirebase || FB;
     const form = e.currentTarget;
     const btn = form.querySelector('button[type="submit"]');
     const id = String(form.recordId.value || "").trim();
@@ -347,6 +436,11 @@
     const videoDrive = form.videoDrive.value.trim();
     const imagenDrive = form.imagenDrive.value.trim();
     if (!titulo || !mensaje) return;
+
+    if (!FB?.auth?.currentUser) {
+      alert("Tu sesión no está activa. Cierra sesión y vuelve a entrar.");
+      return;
+    }
 
     if (btn) {
       btn.disabled = true;
@@ -365,7 +459,7 @@
           item.videoDrive = videoDrive;
           item.imagenDrive = imagenDrive;
           item.updatedAt = new Date().toISOString();
-          item.updatedBy = currentUser?.email || "";
+          item.updatedBy = currentUser?.email || FB.auth.currentUser.email || "";
         }
       } else {
         item = {
@@ -377,23 +471,33 @@
           videoDrive,
           imagenDrive,
           fecha: new Date().toISOString().slice(0, 10),
-          createdBy: currentUser?.email || "",
+          createdBy: currentUser?.email || FB.auth.currentUser.email || "",
           updatedAt: new Date().toISOString(),
         };
         comunicados.unshift(item);
       }
 
-      await persistLocal();
-      if (FB?.configured && item) {
-        try {
-          await FB.saveComunicado(item);
-        } catch (err) {
-          console.error(err);
-          alert("Guardado local, pero falló la nube. Revisa Firebase / conexión.");
-        }
+      if (!item) {
+        alert("No se pudo preparar el comunicado.");
+        return;
       }
+
+      await persistLocal();
+      queuePendingCom(item);
       document.getElementById("modal-com").close();
       renderComunicados();
+
+      try {
+        await FB.saveComunicado(item);
+        savePendingComs(loadPendingComs().filter((c) => c.id !== item.id));
+      } catch (err) {
+        console.error(err);
+        alert(
+          "El comunicado quedó en este dispositivo, pero no se subió a la nube.\n" +
+            (err?.message || "Revisa conexión y reglas de Firestore.") +
+            "\nSe reintentará al volver a entrar."
+        );
+      }
     } finally {
       if (btn) {
         btn.disabled = false;

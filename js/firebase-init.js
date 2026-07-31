@@ -35,12 +35,36 @@ let app = null;
 let auth = null;
 let db = null;
 
-if (isConfigured) {
+function withTimeout(promise, ms = 20000, label = "Operación") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} tardó demasiado. Revisa tu conexión.`)), ms);
+    }),
+  ]);
+}
+
+/** Firestore rechaza `undefined`; limpia el objeto. */
+function sanitize(data) {
+  return JSON.parse(JSON.stringify(data));
+}
+
+async function initFirebase() {
+  if (!isConfigured) return;
   app = initializeApp(cfg);
   auth = getAuth(app);
+  await setPersistence(auth, browserLocalPersistence);
   db = getFirestore(app);
-  setPersistence(auth, browserLocalPersistence).catch(() => {});
 }
+
+const initPromise = initFirebase()
+  .then(() => {
+    window.dispatchEvent(new Event("inmaculada-firebase-ready"));
+  })
+  .catch((err) => {
+    console.error("Firebase init:", err);
+    window.dispatchEvent(new Event("inmaculada-firebase-ready"));
+  });
 
 function isAdminEmail(email) {
   const list = (window.ADMIN_CONFIG?.adminEmails || []).map((e) =>
@@ -56,13 +80,12 @@ function emailDocId(email) {
     .replace(/\//g, "_");
 }
 
-/** Autorización opcional en Firestore: docentes_autorizados/{email} */
 async function isDocenteAuthorized(email) {
   if (!requireApproval) return true;
   if (!db || !email) return false;
   const id = emailDocId(email);
   try {
-    const snap = await getDoc(doc(db, "docentes_autorizados", id));
+    const snap = await withTimeout(getDoc(doc(db, "docentes_autorizados", id)), 12000, "Autorización");
     return snap.exists();
   } catch (err) {
     console.error(err);
@@ -81,27 +104,38 @@ function parsePuestosDocId(id) {
 }
 
 async function fetchComunicados() {
+  await initPromise;
   if (!db) return [];
-  const snap = await getDocs(collection(db, "comunicados"));
+  const snap = await withTimeout(getDocs(collection(db, "comunicados")), 20000, "Carga de comunicados");
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
 }
 
 async function saveComunicado(item) {
+  await initPromise;
   if (!db) throw new Error("Firebase no configurado");
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
   const { id, ...rest } = item;
-  await setDoc(doc(db, "comunicados", id), { ...rest, id }, { merge: true });
+  if (!id) throw new Error("Comunicado sin id");
+  await withTimeout(
+    setDoc(doc(db, "comunicados", id), sanitize({ ...rest, id }), { merge: true }),
+    20000,
+    "Guardar comunicado"
+  );
 }
 
 async function removeComunicado(id) {
+  await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  await deleteDoc(doc(db, "comunicados", id));
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
+  await withTimeout(deleteDoc(doc(db, "comunicados", id)), 20000, "Eliminar comunicado");
 }
 
 async function fetchPuestosMap() {
+  await initPromise;
   if (!db) return {};
-  const snap = await getDocs(collection(db, "puestos"));
+  const snap = await withTimeout(getDocs(collection(db, "puestos")), 20000, "Carga de cuadro de honor");
   const map = {};
   snap.docs.forEach((d) => {
     const data = d.data();
@@ -113,51 +147,97 @@ async function fetchPuestosMap() {
 }
 
 async function savePuestosEntry(entry) {
+  await initPromise;
   if (!db) throw new Error("Firebase no configurado");
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
   const id = puestosDocId(entry.salon, entry.periodo);
-  await setDoc(doc(db, "puestos", id), { ...entry }, { merge: true });
+  await withTimeout(
+    setDoc(doc(db, "puestos", id), sanitize({ ...entry }), { merge: true }),
+    20000,
+    "Guardar cuadro de honor"
+  );
 }
 
 async function removePuestosEntry(salon, periodo) {
+  await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  await deleteDoc(doc(db, "puestos", puestosDocId(salon, periodo)));
+  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
+  await withTimeout(
+    deleteDoc(doc(db, "puestos", puestosDocId(salon, periodo))),
+    20000,
+    "Eliminar cuadro de honor"
+  );
 }
 
 function watchComunicados(callback) {
-  if (!db) return () => {};
-  return onSnapshot(collection(db, "comunicados"), (snap) => {
-    const items = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
-    callback(items);
-  });
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchComunicados(callback);
+    });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "comunicados"),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      callback(items);
+    },
+    (err) => console.error(err)
+  );
 }
 
 function watchPuestos(callback) {
-  if (!db) return () => {};
-  return onSnapshot(collection(db, "puestos"), (snap) => {
-    const map = {};
-    snap.docs.forEach((d) => {
-      const data = d.data();
-      const salon = data.salon || parsePuestosDocId(d.id).salon;
-      const periodo = String(data.periodo || parsePuestosDocId(d.id).periodo);
-      map[`${salon}|${periodo}`] = { ...data, salon, periodo };
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchPuestos(callback);
     });
-    callback(map);
-  });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "puestos"),
+    (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        const salon = data.salon || parsePuestosDocId(d.id).salon;
+        const periodo = String(data.periodo || parsePuestosDocId(d.id).periodo);
+        map[`${salon}|${periodo}`] = { ...data, salon, periodo };
+      });
+      callback(map);
+    },
+    (err) => console.error(err)
+  );
 }
 
 window.InmaculadaFirebase = {
   ready: true,
   configured: isConfigured,
   requireApproval,
-  auth,
-  db,
+  get auth() {
+    return auth;
+  },
+  get db() {
+    return db;
+  },
+  whenReady: () => initPromise,
   isAdminEmail,
   isDocenteAuthorized,
-  signIn: (email, password) => signInWithEmailAndPassword(auth, email, password),
-  signOut: () => signOut(auth),
-  onAuth: (cb) => (auth ? onAuthStateChanged(auth, cb) : cb(null)),
+  signIn: async (email, password) => {
+    await initPromise;
+    return signInWithEmailAndPassword(auth, email, password);
+  },
+  signOut: async () => {
+    await initPromise;
+    return signOut(auth);
+  },
+  onAuth: (cb) => {
+    initPromise.then(() => {
+      if (auth) onAuthStateChanged(auth, cb);
+      else cb(null);
+    });
+  },
   fetchComunicados,
   saveComunicado,
   removeComunicado,
@@ -168,4 +248,4 @@ window.InmaculadaFirebase = {
   watchPuestos,
 };
 
-window.dispatchEvent(new Event("inmaculada-firebase-ready"));
+// El evento ready se dispara al terminar initPromise (arriba).
