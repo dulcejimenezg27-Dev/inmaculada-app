@@ -1,16 +1,20 @@
 /* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v9";
+const CACHE_NAME = "inmaculada-v10";
 const ASSETS = [
   "./index.html",
   "./css/styles.css",
+  "./css/ayuda-nav.css",
   "./js/app.js",
   "./js/shared-content.js",
+  "./js/ayuda-nav.js",
+  "./js/firebase-config.js",
   "./manifest.json",
   "./data/contenido.json",
   "./image/logoInmaculada.jpg",
   "./image/fondoApp.jpeg",
   "./image/icon-192.png",
   "./image/icon-512.png",
+  "./image/ayudas.jpeg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -18,11 +22,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) =>
-        Promise.all(
-          ASSETS.map((url) =>
-            cache.add(url).catch(() => undefined)
-          )
-        )
+        Promise.all(ASSETS.map((url) => cache.add(url).catch(() => undefined)))
       )
       .then(() => self.skipWaiting())
   );
@@ -49,16 +49,37 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navegación: network-first para no quedar pegado a HTML viejo
-  if (request.mode === "navigate") {
+  // No cachear Firebase / Google
+  if (
+    url.hostname.includes("googleapis.com") ||
+    url.hostname.includes("gstatic.com") ||
+    url.hostname.includes("firebaseio.com") ||
+    url.hostname.includes("firebaseapp.com")
+  ) {
+    return;
+  }
+
+  // HTML y JS/CSS: red primero (para ver comunicados nuevos y código actualizado)
+  const path = url.pathname;
+  const networkFirst =
+    request.mode === "navigate" ||
+    path.endsWith(".js") ||
+    path.endsWith(".css") ||
+    path.endsWith(".html") ||
+    path.includes("/js/") ||
+    path.includes("/css/");
+
+  if (networkFirst) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", clone));
+          if (response && response.status === 200 && response.type === "basic") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(request).then((c) => c || caches.match("./index.html")))
     );
     return;
   }
@@ -74,7 +95,6 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached);
-
       return cached || fetchPromise;
     })
   );

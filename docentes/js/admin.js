@@ -490,6 +490,14 @@
       try {
         await FB.saveComunicado(item);
         savePendingComs(loadPendingComs().filter((c) => c.id !== item.id));
+        // Verificar que la nube lo tiene (así la app pública puede leerlo)
+        const remote = await FB.fetchComunicados();
+        const ok = Array.isArray(remote) && remote.some((c) => c.id === item.id);
+        if (!ok) {
+          alert(
+            "El comunicado no quedó en la nube. Revisa en Firebase Console → Firestore que exista la colección «comunicados» y que las reglas estén publicadas."
+          );
+        }
       } catch (err) {
         console.error(err);
         alert(

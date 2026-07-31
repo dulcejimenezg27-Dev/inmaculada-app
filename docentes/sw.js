@@ -1,5 +1,5 @@
 /* Service Worker — Inmaculada Docentes PWA */
-const CACHE_NAME = "inmaculada-docentes-v1";
+const CACHE_NAME = "inmaculada-docentes-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -38,15 +38,36 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  if (request.mode === "navigate") {
+  const url = new URL(request.url);
+  if (
+    url.hostname.includes("googleapis.com") ||
+    url.hostname.includes("gstatic.com") ||
+    url.hostname.includes("firebaseio.com") ||
+    url.hostname.includes("firebaseapp.com")
+  ) {
+    return;
+  }
+
+  const path = url.pathname;
+  const networkFirst =
+    request.mode === "navigate" ||
+    path.endsWith(".js") ||
+    path.endsWith(".css") ||
+    path.endsWith(".html") ||
+    path.includes("/js/") ||
+    path.includes("/css/");
+
+  if (networkFirst) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", clone));
+          if (response && response.status === 200 && response.type === "basic") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(request).then((c) => c || caches.match("./index.html")))
     );
     return;
   }

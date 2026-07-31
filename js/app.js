@@ -109,7 +109,7 @@
     const list = document.getElementById("lista-comunicados");
     const items = comunicados
       .filter((c) => filtro === "todos" || c.categoria === filtro)
-      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
 
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay comunicados en esta categoría.</div>`;
@@ -559,24 +559,51 @@
 
   async function boot() {
     if (C) {
+      // Agenda y respaldo estático; comunicados/honor los manda Firestore si está activo
       await C.hydrateFromFile("./data/contenido.json");
       reloadFromStorage();
     }
 
-    function attachFirebase() {
+    async function attachFirebase() {
       const FB = window.InmaculadaFirebase;
       if (!FB?.configured) {
         showView(currentHash());
         return;
       }
 
+      try {
+        if (FB.whenReady) await FB.whenReady();
+      } catch (err) {
+        console.error(err);
+      }
+
+      // Carga inmediata desde la nube (no solo el listener)
+      try {
+        const [coms, puestos] = await Promise.all([
+          FB.fetchComunicados(),
+          FB.fetchPuestosMap(),
+        ]);
+        if (Array.isArray(coms)) {
+          comunicados = coms;
+          if (C) C.save(C.STORAGE.comunicados, comunicados);
+        }
+        if (puestos && typeof puestos === "object") {
+          puestosMap = puestos;
+          if (C) C.save(C.STORAGE.puestos, puestosMap);
+        }
+      } catch (err) {
+        console.error("Carga Firestore:", err);
+      }
+
       FB.watchComunicados((items) => {
+        if (!Array.isArray(items)) return;
         comunicados = items;
         if (C) C.save(C.STORAGE.comunicados, comunicados);
         if (currentHash() === "comunicados") renderComunicados();
       });
 
       FB.watchPuestos((map) => {
+        if (!map || typeof map !== "object") return;
         puestosMap = map;
         if (C) C.save(C.STORAGE.puestos, puestosMap);
         if (currentHash() === "puestos") renderPuestos();
@@ -585,10 +612,16 @@
       showView(currentHash());
     }
 
-    if (window.InmaculadaFirebase) attachFirebase();
-    else {
-      window.addEventListener("inmaculada-firebase-ready", attachFirebase, { once: true });
-      // Si Firebase tarda, igual mostramos la vista con datos locales
+    if (window.InmaculadaFirebase) {
+      await attachFirebase();
+    } else {
+      window.addEventListener(
+        "inmaculada-firebase-ready",
+        () => {
+          attachFirebase();
+        },
+        { once: true }
+      );
       showView(currentHash());
     }
   }
