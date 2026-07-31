@@ -8,11 +8,6 @@ import {
   setPersistence,
   browserLocalPersistence,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
@@ -39,8 +34,6 @@ const requireApproval = window.ADMIN_CONFIG?.requireDocenteApproval === true;
 let app = null;
 let auth = null;
 let db = null;
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
 
 if (isConfigured) {
   app = initializeApp(cfg);
@@ -63,7 +56,7 @@ function emailDocId(email) {
     .replace(/\//g, "_");
 }
 
-/** Autorización en Firestore: colección docentes_autorizados/{email} */
+/** Autorización opcional en Firestore: docentes_autorizados/{email} */
 async function isDocenteAuthorized(email) {
   if (!requireApproval) return true;
   if (!db || !email) return false;
@@ -154,43 +147,6 @@ function watchPuestos(callback) {
   });
 }
 
-async function signInWithGoogle() {
-  if (!auth) {
-    const err = new Error("Firebase no configurado");
-    err.code = "auth/not-configured";
-    throw err;
-  }
-
-  // Preferir popup: el redirect en móvil a menudo vuelve al login sin crear la cuenta
-  try {
-    return await signInWithPopup(auth, googleProvider);
-  } catch (err) {
-    const code = err?.code || "";
-    if (
-      code === "auth/popup-closed-by-user" ||
-      code === "auth/cancelled-popup-request" ||
-      code === "auth/unauthorized-domain" ||
-      code === "auth/operation-not-allowed" ||
-      code === "auth/account-exists-with-different-credential"
-    ) {
-      throw err;
-    }
-    if (
-      code === "auth/popup-blocked" ||
-      code === "auth/operation-not-supported-in-this-environment"
-    ) {
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
-    throw err;
-  }
-}
-
-async function createUser(email, password) {
-  if (!auth) throw new Error("Firebase no configurado");
-  return createUserWithEmailAndPassword(auth, email, password);
-}
-
 window.InmaculadaFirebase = {
   ready: true,
   configured: isConfigured,
@@ -200,11 +156,8 @@ window.InmaculadaFirebase = {
   isAdminEmail,
   isDocenteAuthorized,
   signIn: (email, password) => signInWithEmailAndPassword(auth, email, password),
-  signInWithGoogle,
-  createUser,
   signOut: () => signOut(auth),
   onAuth: (cb) => (auth ? onAuthStateChanged(auth, cb) : cb(null)),
-  handleRedirectResult: () => (auth ? getRedirectResult(auth) : Promise.resolve(null)),
   fetchComunicados,
   saveComunicado,
   removeComunicado,

@@ -86,12 +86,7 @@
       lead: "Guía para publicar comunicados y cuadro de honor.",
       html: `
         <h3>Cómo entrar</h3>
-        <ul>
-          <li><strong>Correo y contraseña</strong> de tu cuenta.</li>
-          <li><strong>Continuar con Google</strong> con tu cuenta de Google.</li>
-          <li><strong>Crear usuario</strong> si aún no tienes cuenta.</li>
-        </ul>
-        <p>Después de crear la cuenta o entrar con Google, tu usuario aparece en Firebase Authentication. Si no debes tener acceso, el administrador puede deshabilitarte ahí.</p>
+        <p>Usa el <strong>correo</strong> y la <strong>contraseña</strong> que te asignó el colegio (creados en Firebase).</p>
         <h3>Qué puedes hacer</h3>
         <ul>
           <li><strong>Comunicados:</strong> publicar avisos (texto y enlaces de YouTube o Drive).</li>

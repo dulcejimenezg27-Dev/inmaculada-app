@@ -12,13 +12,8 @@ window.FIREBASE_CONFIG = {
 
 /**
  * El panel /admin/ usa clave local en admin/js/config.js.
- * Docentes: Firebase Auth (correo, Google o crear usuario).
- *
- * Autorización: Authentication → Users.
- * Si alguien no debe entrar, deshabilita su usuario ahí.
- *
- * requireDocenteApproval (opcional): si es true, además exige un documento
- * en Firestore docentes_autorizados/{correo}. Por defecto false.
+ * Docentes: Firebase Auth con correo y contraseña
+ * (los usuarios se crean en Authentication → Users).
  */
 window.ADMIN_CONFIG = window.ADMIN_CONFIG || {
   adminEmails: [],

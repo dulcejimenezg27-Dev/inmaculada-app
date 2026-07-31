@@ -25,18 +25,6 @@
       "auth/invalid-credential": "Correo o contraseña incorrectos",
       "auth/too-many-requests": "Demasiados intentos. Espera un momento",
       "auth/network-request-failed": "Sin conexión a Internet",
-      "auth/email-already-in-use": "Ese correo ya tiene una cuenta",
-      "auth/weak-password": "La contraseña debe tener al menos 6 caracteres",
-      "auth/popup-closed-by-user": "Inicio con Google cancelado",
-      "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permite ventanas emergentes o prueba de nuevo.",
-      "auth/cancelled-popup-request": "Inicio con Google cancelado",
-      "auth/unauthorized-domain":
-        "Este dominio no está autorizado. En Firebase: Authentication → Settings → Authorized domains → agrega tu dominio (sin https) y localhost si pruebas en local.",
-      "auth/operation-not-allowed":
-        "Google no está activado. En Firebase: Authentication → Sign-in method → Google → Enable.",
-      "auth/account-exists-with-different-credential":
-        "Ese correo ya existe con otro método. Entra con correo y contraseña o usa el mismo método de siempre.",
-      "auth/not-configured": "Firebase aún no está listo. Recarga la página.",
     };
     return map[code] || fallback || "No se pudo iniciar sesión";
   }
@@ -158,6 +146,7 @@
 
   document.getElementById("form-login")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    FB = window.InmaculadaFirebase || FB;
     const email = String(document.getElementById("login-email")?.value || "").trim();
     const pass = String(document.getElementById("login-password")?.value || "").trim();
 
@@ -171,86 +160,6 @@
       clearLoginError();
     } catch (ex) {
       showLoginError(authErrorMessage(ex.code, ex.message));
-    }
-  });
-
-  document.getElementById("btn-google")?.addEventListener("click", async () => {
-    FB = window.InmaculadaFirebase || FB;
-    const btn = document.getElementById("btn-google");
-    if (!FB?.configured) {
-      showLoginError("El acceso aún no está disponible. Intenta más tarde.");
-      return;
-    }
-    try {
-      clearLoginError();
-      if (btn) {
-        btn.disabled = true;
-        btn.setAttribute("aria-busy", "true");
-      }
-      await FB.signInWithGoogle();
-      // Si fue redirect, la página recarga; si fue popup, onAuth se encarga
-    } catch (ex) {
-      console.error("Google sign-in:", ex);
-      showLoginError(authErrorMessage(ex.code, ex.message));
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.removeAttribute("aria-busy");
-      }
-    }
-  });
-
-  document.getElementById("btn-crear-usuario")?.addEventListener("click", () => {
-    const form = document.getElementById("form-registro");
-    const err = document.getElementById("registro-error");
-    form?.reset();
-    if (err) err.hidden = true;
-    document.getElementById("modal-registro")?.showModal();
-  });
-
-  document.getElementById("btn-toggle-reg-password")?.addEventListener("click", () => {
-    const input = document.getElementById("reg-password");
-    const btn = document.getElementById("btn-toggle-reg-password");
-    if (!input || !btn) return;
-    const showing = input.type === "text";
-    input.type = showing ? "password" : "text";
-    btn.textContent = showing ? "Ver" : "Ocultar";
-    btn.setAttribute("aria-pressed", showing ? "false" : "true");
-  });
-
-  document.getElementById("form-registro")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = String(document.getElementById("reg-email")?.value || "").trim();
-    const pass = String(document.getElementById("reg-password")?.value || "");
-    const pass2 = String(document.getElementById("reg-password2")?.value || "");
-    const err = document.getElementById("registro-error");
-
-    if (!FB?.configured) {
-      if (err) {
-        err.hidden = false;
-        err.textContent = "El acceso aún no está disponible. Intenta más tarde.";
-      }
-      return;
-    }
-
-    if (pass !== pass2) {
-      if (err) {
-        err.hidden = false;
-        err.textContent = "Las contraseñas no coinciden";
-      }
-      return;
-    }
-
-    try {
-      await FB.createUser(email, pass);
-      document.getElementById("modal-registro")?.close();
-      clearLoginError();
-      // onAuthStateChanged abre el panel; la cuenta queda en Authentication → Users
-    } catch (ex) {
-      if (err) {
-        err.hidden = false;
-        err.textContent = authErrorMessage(ex.code, ex.message);
-      }
     }
   });
 
@@ -273,15 +182,6 @@
       showLoginError("El acceso aún no está disponible. Intenta más tarde.");
       return;
     }
-
-    FB.handleRedirectResult?.()
-      .then((result) => {
-        if (result?.user) clearLoginError();
-      })
-      .catch((ex) => {
-        console.error("Google redirect:", ex);
-        showLoginError(authErrorMessage(ex.code, ex.message));
-      });
 
     FB.onAuth(async (user) => {
       if (user) {
