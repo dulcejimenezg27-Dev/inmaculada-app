@@ -27,6 +27,8 @@
   let comunicados = C
     ? C.load(C.STORAGE.comunicados, C.seedComunicados)
     : [];
+  let bienestarPosts = [];
+  let personeroPosts = [];
   let eventos = C ? C.load(C.STORAGE.eventos, C.seedEventos) : [];
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
   let likesCounts = {};
@@ -34,6 +36,8 @@
   let likeBusy = new Set();
   let perfilesByUid = {};
   let filtro = "todos";
+  let filtroBienestar = "todos";
+  let filtroPersonero = "todos";
   let mesActual = new Date();
   mesActual.setDate(1);
   let diaSeleccionado = null;
@@ -80,6 +84,8 @@
     });
 
     if (name === "comunicados") renderComunicados();
+    if (name === "bienestar") renderBienestar();
+    if (name === "personero") renderPersonero();
     if (name === "agenda") renderAgenda();
     if (name === "puestos") renderPuestos();
 
@@ -88,7 +94,7 @@
 
   function currentHash() {
     const h = (location.hash || "#inicio").replace("#", "");
-    return ["inicio", "pagos", "comunicados", "agenda", "puestos", "simbolos"].includes(h)
+    return ["inicio", "pagos", "comunicados", "bienestar", "personero", "agenda", "puestos", "simbolos"].includes(h)
       ? h
       : "inicio";
   }
@@ -113,7 +119,32 @@
     if (!autor || typeof autor !== "object") return autor;
     const uid = autor.uid;
     const perfil = uid ? perfilesByUid[uid] : null;
-    if (!perfil) return autor;
+    if (!perfil) {
+      const cargo = String(autor.cargo || "").trim();
+      const rol =
+        autor.cargoLabel ||
+        autor.licenciatura ||
+        (cargo === "coordinador"
+          ? "Coordinador"
+          : cargo === "rector"
+            ? "Rector"
+            : cargo === "secretaria"
+              ? "Secretaria"
+              : cargo);
+      return { ...autor, licenciatura: rol, cargoLabel: rol };
+    }
+    const cargo = String(perfil.cargo || autor.cargo || "").trim();
+    const rol =
+      (cargo === "coordinador"
+        ? "Coordinador"
+        : cargo === "rector"
+          ? "Rector"
+          : cargo === "secretaria"
+            ? "Secretaria"
+            : "") ||
+      perfil.licenciatura ||
+      autor.licenciatura ||
+      "";
     return {
       ...autor,
       nombres: autor.nombres || perfil.nombres || "",
@@ -122,7 +153,9 @@
         autor.nombreCompleto ||
         [perfil.nombres, perfil.apellidos].filter(Boolean).join(" ") ||
         autor.nombreCompleto,
-      licenciatura: autor.licenciatura || perfil.licenciatura || "",
+      cargo,
+      cargoLabel: rol,
+      licenciatura: rol,
       fotoUrl: perfil.fotoUrl || autor.fotoUrl || "",
     };
   }
@@ -176,9 +209,97 @@
     likesCounts = state.counts || {};
     likesMine = state.mine instanceof Set ? state.mine : new Set(state.mine || []);
     if (currentHash() === "comunicados") renderComunicados();
+    if (currentHash() === "bienestar") renderBienestar();
+    if (currentHash() === "personero") renderPersonero();
   }
 
-  document.getElementById("lista-comunicados")?.addEventListener("click", async (e) => {
+  function renderBienestar() {
+    const list = document.getElementById("lista-bienestar");
+    if (!list) return;
+    const items = bienestarPosts
+      .filter((c) => filtroBienestar === "todos" || c.categoria === filtroBienestar)
+      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+
+    if (!items.length) {
+      list.innerHTML = `<div class="empty">No hay publicaciones de bienestar en esta categoría.</div>`;
+      return;
+    }
+
+    list.innerHTML = items
+      .map(
+        (c) => `
+      <article class="feed-item" data-id="${c.id}">
+        ${
+          C && C.autorMetaHtml
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
+            : `<div class="feed-item__meta">
+          <span class="tag tag--${c.categoria}">${c.categoria}</span>
+          <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
+        </div>`
+        }
+        <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
+        <p class="feed-item__body">${escapeHtml(c.mensaje)}</p>
+        ${C && C.mediaHtml ? C.mediaHtml(c) : ""}
+        ${likeButtonHtml(c.id)}
+      </article>`
+      )
+      .join("");
+  }
+
+  function renderPersonero() {
+    const list = document.getElementById("lista-personero");
+    if (!list) return;
+    const items = personeroPosts
+      .filter((c) => filtroPersonero === "todos" || c.categoria === filtroPersonero)
+      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+
+    if (!items.length) {
+      list.innerHTML = `<div class="empty">No hay publicaciones del personero en esta categoría.</div>`;
+      return;
+    }
+
+    list.innerHTML = items
+      .map(
+        (c) => `
+      <article class="feed-item" data-id="${c.id}">
+        ${
+          C && C.autorMetaHtml
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
+            : `<div class="feed-item__meta">
+          <span class="tag tag--${c.categoria}">${c.categoria}</span>
+          <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
+        </div>`
+        }
+        <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
+        <p class="feed-item__body">${escapeHtml(c.mensaje)}</p>
+        ${C && C.mediaHtml ? C.mediaHtml(c) : ""}
+        ${likeButtonHtml(c.id)}
+      </article>`
+      )
+      .join("");
+  }
+
+  document.querySelectorAll("[data-filter-bienestar]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      filtroBienestar = btn.getAttribute("data-filter-bienestar") || "todos";
+      document.querySelectorAll("[data-filter-bienestar]").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+      renderBienestar();
+    });
+  });
+
+  document.querySelectorAll("[data-filter-personero]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      filtroPersonero = btn.getAttribute("data-filter-personero") || "todos";
+      document.querySelectorAll("[data-filter-personero]").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+      renderPersonero();
+    });
+  });
+
+  async function handleLikeClick(e) {
     const btn = e.target.closest("[data-like]");
     if (!btn) return;
     e.preventDefault();
@@ -190,7 +311,6 @@
 
     const wasLiked = likesMine.has(id);
     const prevCount = likesCounts[id] || 0;
-    // Optimistic UI
     if (wasLiked) {
       likesMine.delete(id);
       likesCounts[id] = Math.max(0, prevCount - 1);
@@ -213,7 +333,6 @@
       await FB.toggleLike(id);
     } catch (err) {
       console.error(err);
-      // Revert
       if (wasLiked) {
         likesMine.add(id);
         likesCounts[id] = prevCount;
@@ -229,13 +348,17 @@
     } finally {
       likeBusy.delete(id);
     }
-  });
+  }
 
-  document.querySelector(".filters")?.addEventListener("click", (e) => {
+  document.getElementById("lista-comunicados")?.addEventListener("click", handleLikeClick);
+  document.getElementById("lista-bienestar")?.addEventListener("click", handleLikeClick);
+  document.getElementById("lista-personero")?.addEventListener("click", handleLikeClick);
+
+  document.querySelector("#comunicados .filters")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-filter]");
     if (!btn) return;
     filtro = btn.getAttribute("data-filter");
-    document.querySelectorAll(".chip").forEach((c) => {
+    document.querySelectorAll("#comunicados .chip").forEach((c) => {
       c.classList.toggle("is-active", c === btn);
     });
     renderComunicados();
@@ -709,8 +832,10 @@
 
       // Carga inmediata desde la nube (no solo el listener)
       try {
-        const [coms, puestos, evs, likes, perfiles] = await Promise.all([
+        const [coms, bienestar, personero, puestos, evs, likes, perfiles] = await Promise.all([
           FB.fetchComunicados(),
+          FB.fetchBienestar ? FB.fetchBienestar() : Promise.resolve([]),
+          FB.fetchPersonero ? FB.fetchPersonero() : Promise.resolve([]),
           FB.fetchPuestosMap(),
           FB.fetchEventos(),
           FB.fetchLikesState ? FB.fetchLikesState() : Promise.resolve(null),
@@ -719,6 +844,12 @@
         if (Array.isArray(coms)) {
           comunicados = coms;
           if (C) C.save(C.STORAGE.comunicados, comunicados);
+        }
+        if (Array.isArray(bienestar)) {
+          bienestarPosts = bienestar;
+        }
+        if (Array.isArray(personero)) {
+          personeroPosts = personero;
         }
         if (puestos && typeof puestos === "object") {
           puestosMap = puestos;
@@ -743,6 +874,22 @@
         if (currentHash() === "comunicados") renderComunicados();
       });
 
+      if (FB.watchBienestar) {
+        FB.watchBienestar((items) => {
+          if (!Array.isArray(items)) return;
+          bienestarPosts = items;
+          if (currentHash() === "bienestar") renderBienestar();
+        });
+      }
+
+      if (FB.watchPersonero) {
+        FB.watchPersonero((items) => {
+          if (!Array.isArray(items)) return;
+          personeroPosts = items;
+          if (currentHash() === "personero") renderPersonero();
+        });
+      }
+
       FB.watchPuestos((map) => {
         if (!map || typeof map !== "object") return;
         puestosMap = map;
@@ -766,6 +913,8 @@
           if (!map || typeof map !== "object") return;
           perfilesByUid = map;
           if (currentHash() === "comunicados") renderComunicados();
+          if (currentHash() === "bienestar") renderBienestar();
+          if (currentHash() === "personero") renderPersonero();
         });
       }
 

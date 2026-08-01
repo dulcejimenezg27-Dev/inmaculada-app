@@ -10,6 +10,8 @@
     const path = (location.pathname || "").toLowerCase();
     if (path.includes("/admin")) return "admin";
     if (path.includes("/docentes")) return "docentes";
+    if (path.includes("/bienestar")) return "bienestar";
+    if (path.includes("/personero")) return "personero";
     return "publica";
   }
 
@@ -23,6 +25,8 @@
     publica: "Inmaculada App",
     admin: "Inmaculada Admin",
     docentes: "Inmaculada Docentes",
+    bienestar: "Inmaculada Bienestar",
+    personero: "Inmaculada Personero",
   };
 
   function installHtml(appName) {
@@ -55,6 +59,8 @@
           <li><strong>Inicio:</strong> logo, accesos rápidos, redes y cómo llegar.</li>
           <li><strong>Pagos:</strong> paga con PSE y envía el soporte por WhatsApp.</li>
           <li><strong>Comunicados:</strong> avisos oficiales del colegio (solo lectura).</li>
+          <li><strong>Bienestar:</strong> orientación y consejos de psicología escolar.</li>
+          <li><strong>Personero:</strong> propuestas y mensajes del gobierno estudiantil.</li>
           <li><strong>Agenda:</strong> eventos escolares del mes.</li>
           <li><strong>Cuadro de honor:</strong> destacados por salón y período.</li>
           <li><strong>Símbolos:</strong> bandera, escudo e himno (próximamente).</li>
@@ -70,6 +76,8 @@
       html: `
         <h3>Cómo entrar</h3>
         <p>Inicia sesión con la contraseña de administración.</p>
+        <h3>Tu perfil</h3>
+        <p>Con <strong>Mi perfil</strong> puedes poner nombres, apellidos, cargo (<strong>Coordinador</strong>, <strong>Rector</strong> o <strong>Secretaria</strong>) y foto. Así te verán en los comunicados.</p>
         <ul>
           <li><strong>Comunicados:</strong> crear, editar o eliminar avisos.</li>
           <li><strong>Agenda:</strong> gestionar eventos (fecha, hora y descripción).</li>
@@ -95,6 +103,40 @@
           <li><strong>Cuadro de honor:</strong> publicar por salón y período.</li>
         </ul>
         ${installHtml(INSTALL.docentes)}
+      `,
+    },
+    bienestar: {
+      title: "Ayuda · Bienestar",
+      lead: "Guía para publicar orientación desde psicología escolar.",
+      html: `
+        <h3>Cómo entrar</h3>
+        <p>Usa el correo <strong>psicologia@inmaculada.app</strong> y la contraseña creada en Firebase.</p>
+        <h3>Tu perfil</h3>
+        <p>La primera vez completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Psicóloga) y foto de Drive. Así te verán en Bienestar.</p>
+        <h3>Qué puedes hacer</h3>
+        <ul>
+          <li>Publicar textos con categorías: general, familia, emocional o convivencia.</li>
+          <li>Adjuntar YouTube o imagen/video de Drive, igual que en comunicados.</li>
+        </ul>
+        <p>Las publicaciones aparecen en la app pública, en la sección <strong>Bienestar</strong>.</p>
+        ${installHtml(INSTALL.bienestar)}
+      `,
+    },
+    personero: {
+      title: "Ayuda · Personero",
+      lead: "Guía para publicar desde el personero estudiantil.",
+      html: `
+        <h3>Cómo entrar</h3>
+        <p>Usa el correo <strong>personero@inmaculada.app</strong> y la contraseña creada en Firebase.</p>
+        <h3>Tu perfil</h3>
+        <p>La primera vez completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Personero) y foto de Drive.</p>
+        <h3>Qué puedes hacer</h3>
+        <ul>
+          <li>Publicar con categorías: general, propuestas, actividades o derechos.</li>
+          <li>Adjuntar YouTube o imagen/video de Drive.</li>
+        </ul>
+        <p>Las publicaciones aparecen en la app pública, en la sección <strong>Personero</strong>.</p>
+        ${installHtml(INSTALL.personero)}
       `,
     },
   };

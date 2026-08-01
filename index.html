@@ -45,6 +45,8 @@
         <a href="#pagos" data-nav="pagos" class="nav-link">Pagos</a>
         <a href="#puestos" data-nav="puestos" class="nav-link">Cuadro de honor</a>
         <a href="#comunicados" data-nav="comunicados" class="nav-link">Comunicados</a>
+        <a href="#bienestar" data-nav="bienestar" class="nav-link">Bienestar</a>
+        <a href="#personero" data-nav="personero" class="nav-link">Personero</a>
         <a href="#agenda" data-nav="agenda" class="nav-link">Agenda</a>
         <a href="#simbolos" data-nav="simbolos" class="nav-link">Símbolos</a>
       </nav>
@@ -80,6 +82,18 @@
               <svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14v11H8l-3 3V6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
             </span>
             <span class="quick__label">Comunicados</span>
+          </a>
+          <a href="#bienestar" data-nav="bienestar" class="quick__item">
+            <span class="quick__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-10a4.5 4.5 0 018.5-2 4.5 4.5 0 018.5 2c0 5.5-7 10-7 10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="quick__label">Bienestar</span>
+          </a>
+          <a href="#personero" data-nav="personero" class="quick__item">
+            <span class="quick__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.5 5.5L20 10l-4.5 3.5L17 20l-5-3-5 3 1.5-6.5L4 10l5.5-1.5L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="quick__label">Personero</span>
           </a>
           <a href="#agenda" data-nav="agenda" class="quick__item">
             <span class="quick__icon" aria-hidden="true">
@@ -281,6 +295,46 @@
       <div id="lista-comunicados" class="feed" aria-live="polite"></div>
     </section>
 
+    <!-- BIENESTAR -->
+    <section id="bienestar" class="view" aria-labelledby="bienestar-title" hidden>
+      <header class="view__header">
+        <div>
+          <h1 id="bienestar-title" class="view__title">Bienestar</h1>
+          <p class="view__subtitle">Orientación y acompañamiento desde psicología escolar.</p>
+        </div>
+      </header>
+
+      <div class="filters" role="group" aria-label="Filtrar bienestar">
+        <button type="button" class="chip is-active" data-filter-bienestar="todos">Todos</button>
+        <button type="button" class="chip" data-filter-bienestar="general">General</button>
+        <button type="button" class="chip" data-filter-bienestar="familia">Familia</button>
+        <button type="button" class="chip" data-filter-bienestar="emocional">Emocional</button>
+        <button type="button" class="chip" data-filter-bienestar="convivencia">Convivencia</button>
+      </div>
+
+      <div id="lista-bienestar" class="feed" aria-live="polite"></div>
+    </section>
+
+    <!-- PERSONERO -->
+    <section id="personero" class="view" aria-labelledby="personero-title" hidden>
+      <header class="view__header">
+        <div>
+          <h1 id="personero-title" class="view__title">Personero</h1>
+          <p class="view__subtitle">Voz estudiantil, propuestas y gobierno escolar.</p>
+        </div>
+      </header>
+
+      <div class="filters" role="group" aria-label="Filtrar personero">
+        <button type="button" class="chip is-active" data-filter-personero="todos">Todos</button>
+        <button type="button" class="chip" data-filter-personero="general">General</button>
+        <button type="button" class="chip" data-filter-personero="propuestas">Propuestas</button>
+        <button type="button" class="chip" data-filter-personero="actividades">Actividades</button>
+        <button type="button" class="chip" data-filter-personero="derechos">Derechos</button>
+      </div>
+
+      <div id="lista-personero" class="feed" aria-live="polite"></div>
+    </section>
+
     <!-- AGENDA -->
     <section id="agenda" class="view" aria-labelledby="agenda-title" hidden>
       <header class="view__header">
@@ -368,6 +422,14 @@
     <a href="#comunicados" data-nav="comunicados" class="nav-mobile__item">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6h14v11H8l-3 3V6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span>Avisos</span>
+    </a>
+    <a href="#bienestar" data-nav="bienestar" class="nav-mobile__item">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-4.5-7-10a4.5 4.5 0 018.5-2 4.5 4.5 0 018.5 2c0 5.5-7 10-7 10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>Bienestar</span>
+    </a>
+    <a href="#personero" data-nav="personero" class="nav-mobile__item">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l2.5 5.5L20 10l-4.5 3.5L17 20l-5-3-5 3 1.5-6.5L4 10l5.5-1.5L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>Personero</span>
     </a>
     <a href="#agenda" data-nav="agenda" class="nav-mobile__item">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>

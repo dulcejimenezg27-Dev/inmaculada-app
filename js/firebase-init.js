@@ -73,6 +73,22 @@ function isAdminEmail(email) {
   return list.includes(String(email || "").trim().toLowerCase());
 }
 
+function isBienestarEmail(email) {
+  const list = (window.BIENESTAR_CONFIG?.allowedEmails || []).map((e) =>
+    String(e).trim().toLowerCase()
+  );
+  if (!list.length) return false;
+  return list.includes(String(email || "").trim().toLowerCase());
+}
+
+function isPersoneroEmail(email) {
+  const list = (window.PERSONERO_CONFIG?.allowedEmails || []).map((e) =>
+    String(e).trim().toLowerCase()
+  );
+  if (!list.length) return false;
+  return list.includes(String(email || "").trim().toLowerCase());
+}
+
 function emailDocId(email) {
   return String(email || "")
     .trim()
@@ -111,20 +127,37 @@ function perfilCompleto(perfil) {
   );
 }
 
+function cargoLabel(cargo) {
+  const map = {
+    coordinador: "Coordinador",
+    rector: "Rector",
+    secretaria: "Secretaria",
+  };
+  const key = String(cargo || "").trim().toLowerCase();
+  return map[key] || String(cargo || "").trim();
+}
+
 function buildAutorFromPerfil(perfil, user) {
   const nombres = String(perfil?.nombres || "").trim();
   const apellidos = String(perfil?.apellidos || "").trim();
   const nombreCompleto = [nombres, apellidos].filter(Boolean).join(" ").trim();
+  const cargo = String(perfil?.cargo || "").trim();
+  const licenciatura = String(perfil?.licenciatura || "").trim();
+  const rol = cargoLabel(cargo) || licenciatura;
   return {
     uid: perfil?.uid || user?.uid || "",
     email: perfil?.email || user?.email || "",
     nombres,
     apellidos,
     nombreCompleto: nombreCompleto || "Docente",
-    licenciatura: String(perfil?.licenciatura || "").trim(),
+    cargo,
+    cargoLabel: rol,
+    licenciatura: rol,
     fotoUrl: String(perfil?.fotoUrl || "").trim(),
   };
 }
+
+const ADMIN_PERFIL_ID = "admin";
 
 async function fetchPerfil(uid) {
   await initPromise;
@@ -146,6 +179,7 @@ async function savePerfil(perfil) {
     nombres: String(perfil.nombres || "").trim(),
     apellidos: String(perfil.apellidos || "").trim(),
     licenciatura: String(perfil.licenciatura || "").trim(),
+    cargo: "",
     fotoUrl: String(perfil.fotoUrl || "").trim(),
     updatedAt: new Date().toISOString(),
   });
@@ -158,6 +192,39 @@ async function savePerfil(perfil) {
     "Guardar perfil"
   );
   return payload;
+}
+
+/** Perfil del panel Admin (documento fijo, sin Authentication). */
+async function saveAdminPerfil(perfil) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  const cargo = String(perfil.cargo || "").trim().toLowerCase();
+  if (!["coordinador", "rector", "secretaria"].includes(cargo)) {
+    throw new Error("Selecciona el cargo: Coordinador, Rector o Secretaria");
+  }
+  const payload = sanitize({
+    uid: ADMIN_PERFIL_ID,
+    email: "",
+    nombres: String(perfil.nombres || "").trim(),
+    apellidos: String(perfil.apellidos || "").trim(),
+    cargo,
+    licenciatura: cargoLabel(cargo),
+    fotoUrl: String(perfil.fotoUrl || "").trim(),
+    updatedAt: new Date().toISOString(),
+  });
+  if (!payload.nombres || !payload.apellidos) {
+    throw new Error("Nombres y apellidos son obligatorios");
+  }
+  await withTimeout(
+    setDoc(doc(db, "perfiles", ADMIN_PERFIL_ID), payload, { merge: true }),
+    20000,
+    "Guardar perfil admin"
+  );
+  return payload;
+}
+
+async function fetchAdminPerfil() {
+  return fetchPerfil(ADMIN_PERFIL_ID);
 }
 
 async function fetchPerfilesMap() {
@@ -216,6 +283,60 @@ async function removeComunicado(id) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
   await withTimeout(deleteDoc(doc(db, "comunicados", id)), 20000, "Eliminar comunicado");
+}
+
+async function fetchBienestar() {
+  await initPromise;
+  if (!db) return [];
+  const snap = await withTimeout(getDocs(collection(db, "bienestar")), 20000, "Carga de bienestar");
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+}
+
+async function saveBienestar(item) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  const { id, ...rest } = item;
+  if (!id) throw new Error("Publicación sin id");
+  await withTimeout(
+    setDoc(doc(db, "bienestar", id), sanitize({ ...rest, id }), { merge: true }),
+    20000,
+    "Guardar bienestar"
+  );
+}
+
+async function removeBienestar(id) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  await withTimeout(deleteDoc(doc(db, "bienestar", id)), 20000, "Eliminar bienestar");
+}
+
+async function fetchPersonero() {
+  await initPromise;
+  if (!db) return [];
+  const snap = await withTimeout(getDocs(collection(db, "personero")), 20000, "Carga de personero");
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+}
+
+async function savePersonero(item) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  const { id, ...rest } = item;
+  if (!id) throw new Error("Publicación sin id");
+  await withTimeout(
+    setDoc(doc(db, "personero", id), sanitize({ ...rest, id }), { merge: true }),
+    20000,
+    "Guardar personero"
+  );
+}
+
+async function removePersonero(id) {
+  await initPromise;
+  if (!db) throw new Error("Firebase no configurado");
+  await withTimeout(deleteDoc(doc(db, "personero", id)), 20000, "Eliminar personero");
 }
 
 async function fetchPuestosMap() {
@@ -383,6 +504,44 @@ function watchComunicados(callback) {
   );
 }
 
+function watchBienestar(callback) {
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchBienestar(callback);
+    });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "bienestar"),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      callback(items);
+    },
+    (err) => console.error(err)
+  );
+}
+
+function watchPersonero(callback) {
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchPersonero(callback);
+    });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "personero"),
+    (snap) => {
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      callback(items);
+    },
+    (err) => console.error(err)
+  );
+}
+
 function watchPuestos(callback) {
   if (!db) {
     initPromise.then(() => {
@@ -437,11 +596,17 @@ window.InmaculadaFirebase = {
   },
   whenReady: () => initPromise,
   isAdminEmail,
+  isBienestarEmail,
+  isPersoneroEmail,
   isDocenteAuthorized,
   perfilCompleto,
+  cargoLabel,
   buildAutorFromPerfil,
   fetchPerfil,
   savePerfil,
+  fetchAdminPerfil,
+  saveAdminPerfil,
+  ADMIN_PERFIL_ID,
   fetchPerfilesMap,
   watchPerfiles,
   signIn: async (email, password) => {
@@ -462,6 +627,12 @@ window.InmaculadaFirebase = {
   fetchComunicados,
   saveComunicado,
   removeComunicado,
+  fetchBienestar,
+  saveBienestar,
+  removeBienestar,
+  fetchPersonero,
+  savePersonero,
+  removePersonero,
   fetchPuestosMap,
   savePuestosEntry,
   removePuestosEntry,
@@ -469,6 +640,8 @@ window.InmaculadaFirebase = {
   saveEvento,
   removeEvento,
   watchComunicados,
+  watchBienestar,
+  watchPersonero,
   watchPuestos,
   watchEventos,
   getLikeClientId,

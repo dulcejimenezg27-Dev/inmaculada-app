@@ -320,7 +320,7 @@ window.InmaculadaContent = (() => {
     const nombre =
       (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
       "Colegio La Inmaculada";
-    const licencia = String(autor?.licenciatura || "").trim();
+    const licencia = String(autor?.cargoLabel || autor?.licenciatura || autor?.cargo || "").trim();
     const tag = categoria
       ? `<span class="tag tag--${escapeAttr(categoria)}">${escapeHtmlText(categoria)}</span>`
       : "";

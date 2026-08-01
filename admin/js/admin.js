@@ -18,7 +18,15 @@
   let puestosMap = C ? C.load(C.STORAGE.puestos, {}) : {};
   let likesCounts = {};
   let likesWatchBound = false;
+  let currentPerfil = null;
+  let perfilObligatorio = false;
   const fotoCache = { 1: "", 2: "", 3: "" };
+
+  const CARGO_LABELS = {
+    coordinador: "Coordinador",
+    rector: "Rector",
+    secretaria: "Secretaria",
+  };
 
   function isLoggedIn() {
     return sessionStorage.getItem(CFG.sessionKey) === "1";
@@ -98,12 +106,120 @@
   function applyRoleUI() {
     const roleLabel = document.getElementById("admin-role-label");
     const emailLabel = document.getElementById("admin-user-email");
-    if (roleLabel) roleLabel.textContent = "Inmaculada Admin";
+    const nombre =
+      currentPerfil &&
+      [currentPerfil.nombres, currentPerfil.apellidos].filter(Boolean).join(" ").trim();
+    if (roleLabel) roleLabel.textContent = nombre || "Inmaculada Admin";
     if (emailLabel) {
-      emailLabel.textContent = FB?.configured
-        ? "Clave local · publica en la nube"
-        : "Clave local · sin nube";
+      const cargo = CARGO_LABELS[String(currentPerfil?.cargo || "").toLowerCase()] || "";
+      emailLabel.textContent = cargo || (FB?.configured ? "Clave local · nube" : "Clave local");
     }
+  }
+
+  function hasPerfil() {
+    return !!(
+      currentPerfil &&
+      String(currentPerfil.nombres || "").trim() &&
+      String(currentPerfil.apellidos || "").trim() &&
+      ["coordinador", "rector", "secretaria"].includes(
+        String(currentPerfil.cargo || "").toLowerCase()
+      )
+    );
+  }
+
+  function autorSnapshot() {
+    if (FB?.buildAutorFromPerfil && currentPerfil) {
+      return FB.buildAutorFromPerfil(currentPerfil, { uid: "admin" });
+    }
+    const nombres = currentPerfil?.nombres || "Colegio";
+    const apellidos = currentPerfil?.apellidos || "La Inmaculada";
+    const cargo = String(currentPerfil?.cargo || "").toLowerCase();
+    const rol = CARGO_LABELS[cargo] || "Administración";
+    return {
+      uid: "admin",
+      email: "",
+      nombres,
+      apellidos,
+      nombreCompleto: [nombres, apellidos].filter(Boolean).join(" "),
+      cargo,
+      cargoLabel: rol,
+      licenciatura: rol,
+      fotoUrl: currentPerfil?.fotoUrl || "",
+    };
+  }
+
+  function updatePerfilPreview() {
+    const form = document.getElementById("form-perfil");
+    const wrap = document.getElementById("perfil-preview");
+    const img = document.getElementById("perfil-preview-img");
+    const fallback = document.getElementById("perfil-preview-fallback");
+    if (!form || !wrap || !img || !fallback) return;
+    const nombres = form.nombres.value.trim();
+    const apellidos = form.apellidos.value.trim();
+    const nombre = [nombres, apellidos].filter(Boolean).join(" ") || "?";
+    const candidates = C?.driveImageCandidates
+      ? C.driveImageCandidates(form.fotoUrl.value)
+      : [];
+    const initials = C?.inicialesNombre ? C.inicialesNombre(nombre) : "?";
+    wrap.hidden = false;
+    if (candidates.length && C?.setDriveImage) {
+      C.setDriveImage(img, form.fotoUrl.value, () => {
+        img.hidden = true;
+        fallback.hidden = false;
+        fallback.textContent = initials;
+      });
+      fallback.hidden = true;
+    } else if (candidates.length) {
+      img.hidden = false;
+      img.src = candidates[0];
+      fallback.hidden = true;
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      fallback.hidden = false;
+      fallback.textContent = initials;
+    }
+  }
+
+  function openPerfilModal({ required = false } = {}) {
+    const modal = document.getElementById("modal-perfil");
+    const form = document.getElementById("form-perfil");
+    const title = document.getElementById("modal-perfil-title");
+    const lead = document.getElementById("perfil-lead");
+    const cancel = document.getElementById("btn-perfil-cancelar");
+    const err = document.getElementById("perfil-error");
+    if (!modal || !form) return;
+    perfilObligatorio = !!required;
+    if (err) err.hidden = true;
+    form.nombres.value = currentPerfil?.nombres || "";
+    form.apellidos.value = currentPerfil?.apellidos || "";
+    form.cargo.value = currentPerfil?.cargo || "";
+    form.fotoUrl.value = currentPerfil?.fotoUrl || "";
+    if (title) title.textContent = hasPerfil() ? "Editar perfil" : "Crea tu perfil";
+    if (lead) {
+      lead.textContent = required
+        ? "Antes de publicar, completa tu nombre y cargo. Así te verán en los comunicados."
+        : "Así aparecerás en los comunicados que publiques desde Admin.";
+    }
+    if (cancel) cancel.hidden = !!required;
+    updatePerfilPreview();
+    if (!modal.open) modal.showModal();
+  }
+
+  async function loadAdminPerfil() {
+    FB = window.InmaculadaFirebase || FB;
+    if (!FB?.fetchAdminPerfil) {
+      currentPerfil = null;
+      return null;
+    }
+    try {
+      if (FB.whenReady) await FB.whenReady();
+      currentPerfil = await FB.fetchAdminPerfil();
+    } catch (err) {
+      console.error(err);
+      currentPerfil = null;
+    }
+    return currentPerfil;
   }
 
   async function loadCloudData() {
@@ -148,6 +264,7 @@
     }
     if (logged) {
       const cloud = await ensureCloudReady();
+      await loadAdminPerfil();
       applyRoleUI();
       await loadCloudData();
       try {
@@ -165,6 +282,8 @@
             "Lo publicado podría no llegar a la app pública.\n\n" +
             cloud.reason
         );
+      } else if (!hasPerfil()) {
+        openPerfilModal({ required: true });
       }
     }
   }
@@ -198,6 +317,8 @@
 
   document.getElementById("btn-logout")?.addEventListener("click", async () => {
     sessionStorage.removeItem(CFG.sessionKey);
+    currentPerfil = null;
+    perfilObligatorio = false;
     try {
       FB = window.InmaculadaFirebase || FB;
       if (FB?.configured) await FB.signOut();
@@ -205,6 +326,50 @@
       /* ignore */
     }
     showApp(false);
+  });
+
+  document.getElementById("btn-mi-perfil")?.addEventListener("click", () => {
+    openPerfilModal({ required: false });
+  });
+
+  document.getElementById("form-perfil")?.addEventListener("input", updatePerfilPreview);
+  document.getElementById("form-perfil")?.addEventListener("change", updatePerfilPreview);
+
+  document.getElementById("form-perfil")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    FB = window.InmaculadaFirebase || FB;
+    const form = e.currentTarget;
+    const btn = document.getElementById("btn-perfil-guardar");
+    const err = document.getElementById("perfil-error");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Guardando…";
+    }
+    if (err) err.hidden = true;
+    try {
+      if (!FB?.saveAdminPerfil) throw new Error("Firebase no está listo");
+      if (FB.whenReady) await FB.whenReady();
+      currentPerfil = await FB.saveAdminPerfil({
+        nombres: form.nombres.value,
+        apellidos: form.apellidos.value,
+        cargo: form.cargo.value,
+        fotoUrl: form.fotoUrl.value,
+      });
+      perfilObligatorio = false;
+      applyRoleUI();
+      document.getElementById("modal-perfil")?.close();
+    } catch (ex) {
+      console.error(ex);
+      if (err) {
+        err.hidden = false;
+        err.textContent = ex.message || "No se pudo guardar el perfil";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Guardar perfil";
+      }
+    }
   });
 
   function bindFirebaseReady() {
@@ -223,13 +388,21 @@
     e.preventDefault();
     e.stopPropagation();
     const id = btn.getAttribute("data-close-modal");
+    if (id === "modal-perfil" && perfilObligatorio && !hasPerfil()) return;
     const modal = document.getElementById(id);
     if (modal?.open) modal.close();
   });
 
   document.querySelectorAll("dialog.modal").forEach((dialog) => {
     dialog.addEventListener("click", (e) => {
-      if (e.target === dialog) dialog.close();
+      if (e.target !== dialog) return;
+      if (dialog.id === "modal-perfil" && perfilObligatorio && !hasPerfil()) return;
+      dialog.close();
+    });
+    dialog.addEventListener("cancel", (e) => {
+      if (dialog.id === "modal-perfil" && perfilObligatorio && !hasPerfil()) {
+        e.preventDefault();
+      }
     });
   });
 
@@ -285,6 +458,10 @@
   }
 
   document.getElementById("btn-nuevo-com")?.addEventListener("click", () => {
+    if (!hasPerfil()) {
+      openPerfilModal({ required: true });
+      return;
+    }
     const form = document.getElementById("form-com");
     form.reset();
     form.recordId.value = "";
@@ -334,6 +511,12 @@
     const imagenDrive = form.imagenDrive.value.trim();
     if (!titulo || !mensaje) return;
 
+    if (!hasPerfil()) {
+      document.getElementById("modal-com")?.close();
+      openPerfilModal({ required: true });
+      return;
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Guardando…";
@@ -341,6 +524,7 @@
 
     let item;
     try {
+      const autor = autorSnapshot();
       if (id) {
         item = comunicados.find((c) => c.id === id);
         if (item) {
@@ -352,19 +536,7 @@
           item.imagenDrive = imagenDrive;
           item.updatedAt = new Date().toISOString();
           item.updatedBy = "admin";
-          if (!item.autor) {
-            item.autor = {
-              uid: "admin",
-              email: FB?.auth?.currentUser?.email || "",
-              nombres: "Colegio",
-              apellidos: "La Inmaculada",
-              nombreCompleto: "Colegio La Inmaculada",
-              licenciatura: "Administración",
-              fotoUrl: C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg",
-            };
-          } else if (!item.autor.fotoUrl) {
-            item.autor.fotoUrl = C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg";
-          }
+          item.autor = autor;
         }
       } else {
         item = {
@@ -378,15 +550,7 @@
           fecha: new Date().toISOString().slice(0, 10),
           createdBy: "admin",
           updatedAt: new Date().toISOString(),
-          autor: {
-            uid: "admin",
-            email: FB?.auth?.currentUser?.email || "",
-            nombres: "Colegio",
-            apellidos: "La Inmaculada",
-            nombreCompleto: "Colegio La Inmaculada",
-            licenciatura: "Administración",
-            fotoUrl: C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg",
-          },
+          autor,
         };
         comunicados.unshift(item);
       }

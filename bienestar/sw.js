@@ -1,20 +1,16 @@
-/* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v21";
+/* Service Worker — Inmaculada Bienestar PWA */
+const CACHE_NAME = "inmaculada-bienestar-v1";
 const ASSETS = [
+  "./",
   "./index.html",
-  "./css/styles.css",
-  "./css/ayuda-nav.css",
-  "./js/app.js",
+  "./css/admin.css",
+  "./js/admin.js",
+  "./js/config.js",
   "./js/shared-content.js",
-  "./js/ayuda-nav.js",
-  "./js/firebase-config.js",
   "./manifest.json",
-  "./data/contenido.json",
   "./image/logoInmaculada.jpg",
-  "./image/fondoApp.jpeg",
   "./image/icon-192.png",
   "./image/icon-512.png",
-  "./image/ayudas.jpeg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -44,23 +40,6 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-
-  // Dejar que las PWA anidadas (docentes/admin/bienestar/personero) se controlen solas
-  if (
-    url.origin === self.location.origin &&
-    (url.pathname.startsWith("/docentes/") ||
-      url.pathname.startsWith("/admin/") ||
-      url.pathname.startsWith("/bienestar/") ||
-      url.pathname.startsWith("/personero/"))
-  ) {
-    return;
-  }
-
-  if (url.hostname.includes("psepagos.co") || url.hostname.includes("pse.com.co")) {
-    return;
-  }
-
-  // No cachear Firebase / Google
   if (
     url.hostname.includes("googleapis.com") ||
     url.hostname.includes("gstatic.com") ||
@@ -70,7 +49,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML y JS/CSS: red primero (para ver comunicados nuevos y código actualizado)
   const path = url.pathname;
   const networkFirst =
     request.mode === "navigate" ||
@@ -97,7 +75,7 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
+      const network = fetch(request)
         .then((response) => {
           if (response && response.status === 200 && response.type === "basic") {
             const clone = response.clone();
@@ -106,7 +84,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached);
-      return cached || fetchPromise;
+      return cached || network;
     })
   );
 });

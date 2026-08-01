@@ -1,0 +1,33 @@
+{
+  "id": "/personero/",
+  "name": "Inmaculada Personero",
+  "short_name": "Inmaculada Personero",
+  "description": "Espacio del personero estudiantil — Colegio La Inmaculada.",
+  "start_url": "/personero/",
+  "scope": "/personero/",
+  "display": "standalone",
+  "background_color": "#003d78",
+  "theme_color": "#003d78",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/personero/image/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/personero/image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/personero/image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+

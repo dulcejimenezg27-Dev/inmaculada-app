@@ -93,6 +93,11 @@ body {
 
 .btn--primary:hover { background: var(--blue-deep); }
 
+.btn--primary:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .btn--accent {
   background: linear-gradient(135deg, var(--yellow), #e6b800);
   color: var(--blue-deep);
@@ -257,6 +262,10 @@ input, select, textarea {
   text-decoration: none;
 }
 
+.login__card .login__error {
+  text-align: left;
+}
+
 /* Admin shell */
 .admin-top {
   display: flex;
@@ -372,6 +381,21 @@ input, select, textarea {
   margin-top: 0.15rem;
 }
 
+.like-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0.15rem;
+  color: #dc2626;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.like-stat__heart {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .admin-tabs {
   display: flex;
   gap: 0.35rem;
@@ -454,6 +478,9 @@ input, select, textarea {
 .tag--urgente { background: #fee2e2; color: #b91c1c; }
 .tag--academico { background: var(--blue-soft); color: var(--blue); }
 .tag--general { background: #fef9c3; color: #a16207; }
+.tag--familia { background: #fce7f3; color: #9d174d; }
+.tag--emocional { background: #e0e7ff; color: #3730a3; }
+.tag--convivencia { background: #d1fae5; color: #047857; }
 
 .admin-item h3 {
   margin: 0 0 0.3rem;
@@ -465,21 +492,6 @@ input, select, textarea {
   margin: 0;
   color: var(--muted);
   font-size: 0.92rem;
-}
-
-.like-stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0.45rem 0 0.15rem;
-  color: #dc2626;
-  font-size: 0.88rem;
-  font-weight: 650;
-}
-
-.like-stat__heart {
-  font-size: 1rem;
-  line-height: 1;
 }
 
 .admin-item__actions {

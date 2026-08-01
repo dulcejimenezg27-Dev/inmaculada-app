@@ -1,0 +1,32 @@
+{
+  "id": "/bienestar/",
+  "name": "Inmaculada Bienestar",
+  "short_name": "Inmaculada Bienestar",
+  "description": "Publicaciones de orientación y psicología — Colegio La Inmaculada.",
+  "start_url": "/bienestar/",
+  "scope": "/bienestar/",
+  "display": "standalone",
+  "background_color": "#003d78",
+  "theme_color": "#003d78",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/bienestar/image/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/bienestar/image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/bienestar/image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
