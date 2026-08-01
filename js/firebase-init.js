@@ -160,6 +160,37 @@ async function savePerfil(perfil) {
   return payload;
 }
 
+async function fetchPerfilesMap() {
+  await initPromise;
+  if (!db) return {};
+  const snap = await withTimeout(getDocs(collection(db, "perfiles")), 20000, "Carga de perfiles");
+  const map = {};
+  snap.docs.forEach((d) => {
+    map[d.id] = { uid: d.id, ...d.data() };
+  });
+  return map;
+}
+
+function watchPerfiles(callback) {
+  if (!db) {
+    initPromise.then(() => {
+      if (db) watchPerfiles(callback);
+    });
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, "perfiles"),
+    (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => {
+        map[d.id] = { uid: d.id, ...d.data() };
+      });
+      callback(map);
+    },
+    (err) => console.error(err)
+  );
+}
+
 async function fetchComunicados() {
   await initPromise;
   if (!db) return [];
@@ -172,7 +203,6 @@ async function fetchComunicados() {
 async function saveComunicado(item) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
   const { id, ...rest } = item;
   if (!id) throw new Error("Comunicado sin id");
   await withTimeout(
@@ -185,7 +215,6 @@ async function saveComunicado(item) {
 async function removeComunicado(id) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
   await withTimeout(deleteDoc(doc(db, "comunicados", id)), 20000, "Eliminar comunicado");
 }
 
@@ -206,7 +235,6 @@ async function fetchPuestosMap() {
 async function savePuestosEntry(entry) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
   const id = puestosDocId(entry.salon, entry.periodo);
   await withTimeout(
     setDoc(doc(db, "puestos", id), sanitize({ ...entry }), { merge: true }),
@@ -218,7 +246,6 @@ async function savePuestosEntry(entry) {
 async function removePuestosEntry(salon, periodo) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
   await withTimeout(
     deleteDoc(doc(db, "puestos", puestosDocId(salon, periodo))),
     20000,
@@ -238,7 +265,6 @@ async function fetchEventos() {
 async function saveEvento(item) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión para guardar en la nube");
   const { id, ...rest } = item;
   if (!id) throw new Error("Evento sin id");
   await withTimeout(
@@ -251,7 +277,6 @@ async function saveEvento(item) {
 async function removeEvento(id) {
   await initPromise;
   if (!db) throw new Error("Firebase no configurado");
-  if (!auth?.currentUser) throw new Error("Debes iniciar sesión");
   await withTimeout(deleteDoc(doc(db, "eventos", id)), 20000, "Eliminar evento");
 }
 
@@ -417,6 +442,8 @@ window.InmaculadaFirebase = {
   buildAutorFromPerfil,
   fetchPerfil,
   savePerfil,
+  fetchPerfilesMap,
+  watchPerfiles,
   signIn: async (email, password) => {
     await initPromise;
     return signInWithEmailAndPassword(auth, email, password);

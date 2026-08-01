@@ -741,6 +741,97 @@ body.has-install-bar .topbar {
   order: 3;
 }
 
+.puestos-card__media {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto 0.65rem;
+}
+
+.puestos-card__media .puestos-card__photo {
+  margin: 0;
+  display: block;
+}
+
+.honor-medal {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.28));
+  pointer-events: none;
+}
+
+.puestos-card--1 .honor-medal {
+  width: 46px;
+  height: 46px;
+  right: -8px;
+  bottom: -6px;
+}
+
+.honor-medal svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.honor-medal__num {
+  font-family: var(--font, "Outfit", system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 800;
+  fill: #1e293b;
+}
+
+.honor-medal--oro .honor-medal__disc {
+  fill: #f5c518;
+}
+
+.honor-medal--oro .honor-medal__ring {
+  fill: none;
+  stroke: #fff3a8;
+  stroke-width: 2.5;
+}
+
+.honor-medal--oro .honor-medal__ribbon {
+  fill: #0055a4;
+}
+
+.honor-medal--plata .honor-medal__disc {
+  fill: #c0c7d1;
+}
+
+.honor-medal--plata .honor-medal__ring {
+  fill: none;
+  stroke: #f1f5f9;
+  stroke-width: 2.5;
+}
+
+.honor-medal--plata .honor-medal__ribbon {
+  fill: #64748b;
+}
+
+.honor-medal--plata .honor-medal__num {
+  fill: #334155;
+}
+
+.honor-medal--bronce .honor-medal__disc {
+  fill: #cd7f32;
+}
+
+.honor-medal--bronce .honor-medal__ring {
+  fill: none;
+  stroke: #f6d7b0;
+  stroke-width: 2.5;
+}
+
+.honor-medal--bronce .honor-medal__ribbon {
+  fill: #9a3412;
+}
+
+.honor-medal--bronce .honor-medal__num {
+  fill: #fff7ed;
+}
+
 .puestos-card__photo {
   width: 72px;
   height: 72px;
@@ -754,7 +845,18 @@ body.has-install-bar .topbar {
 .puestos-card--1 .puestos-card__photo {
   width: 88px;
   height: 88px;
-  border-color: var(--yellow-deep);
+  border-color: #e6b800;
+  box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.35);
+}
+
+.puestos-card--2 .puestos-card__photo {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.35);
+}
+
+.puestos-card--3 .puestos-card__photo {
+  border-color: #cd7f32;
+  box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.3);
 }
 
 .puestos-card__photo--empty {
@@ -776,18 +878,18 @@ body.has-install-bar .topbar {
 }
 
 .puestos-card--1 .puestos-card__place {
-  background: var(--yellow);
+  background: linear-gradient(135deg, #ffe566, #f5c518);
   color: var(--blue-deep);
 }
 
 .puestos-card--2 .puestos-card__place {
-  background: #e2e8f0;
-  color: #475569;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  color: #334155;
 }
 
 .puestos-card--3 .puestos-card__place {
-  background: #ffedd5;
-  color: #9a3412;
+  background: linear-gradient(135deg, #fdba74, #cd7f32);
+  color: #431407;
 }
 
 .puestos-card__name {
@@ -1294,6 +1396,10 @@ body.has-install-bar .topbar {
   border: none;
 }
 
+.feed-author__avatar--fallback[hidden] {
+  display: none !important;
+}
+
 .feed-author__info {
   min-width: 0;
   display: grid;
@@ -1463,6 +1569,23 @@ body.has-install-bar .topbar {
   max-height: 420px;
   object-fit: contain;
   background: #fff;
+}
+
+.media-image__frame,
+.media-image--frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #0f172a;
+}
+
+.media-image__frame iframe,
+.media-image--frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .btn-link {

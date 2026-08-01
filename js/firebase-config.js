@@ -11,10 +11,10 @@ window.FIREBASE_CONFIG = {
 };
 
 /**
- * El panel /admin/ usa clave local + usuario Firebase (admin/js/config.js).
+ * El panel /admin/ usa clave local (sin Authentication).
  * Docentes: Firebase Auth con correo y contraseña.
  */
 window.ADMIN_CONFIG = window.ADMIN_CONFIG || {
-  adminEmails: ["admin@inmaculada.app"],
+  adminEmails: [],
   requireDocenteApproval: false,
 };

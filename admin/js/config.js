@@ -1,14 +1,13 @@
-/** Contraseña del panel de administración. */
+/** Contraseña del panel de administración (solo acceso local al panel). */
 window.ADMIN_CONFIG = {
   password: "Inmaculada2026Admin",
   sessionKey: "inmaculada_admin_session",
 
   /**
-   * Usuario de Firebase Authentication para publicar en la nube
-   * (comunicados, honor y agenda). Créalo en:
-   * Firebase → Authentication → Users → Add user
-   * El correo debe coincidir con isAdmin() en firestore.rules
+   * Admin NO usa Firebase Authentication.
+   * Publica en Firestore con la clave local del panel.
+   * (Los docentes sí usan Auth en /docentes/)
    */
-  firebaseEmail: "admin@inmaculada.app",
-  firebasePassword: "Inmaculada2026Admin",
+  adminEmails: [],
+  requireDocenteApproval: false,
 };

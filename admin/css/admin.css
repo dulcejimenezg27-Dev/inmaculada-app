@@ -544,17 +544,85 @@ input, select, textarea {
 .medal {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
   font-weight: 800;
   font-size: 0.8rem;
   margin-top: 0.35rem;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
 }
 
-.medal--1 { background: var(--yellow); color: var(--blue-deep); }
-.medal--2 { background: #e2e8f0; color: #334155; }
-.medal--3 { background: #ffedd5; color: #9a3412; }
+.medal--1 {
+  background: linear-gradient(145deg, #ffe566, #f5c518 55%, #d4a017);
+  color: #1e3a5f;
+  border-color: #fff3a8;
+}
+
+.medal--2 {
+  background: linear-gradient(145deg, #f1f5f9, #c0c7d1 55%, #94a3b8);
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.medal--3 {
+  background: linear-gradient(145deg, #fdba74, #cd7f32 55%, #9a3412);
+  color: #fff7ed;
+  border-color: #f6d7b0;
+}
+
+.honor-n--medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 2.4rem;
+  height: 2rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.honor-n__icon {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.65);
+}
+
+.honor-n--oro {
+  background: linear-gradient(135deg, #ffe566, #f5c518);
+  color: #1e3a5f;
+}
+
+.honor-n--oro .honor-n__icon { background: #d4a017; }
+
+.honor-n--plata {
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  color: #334155;
+}
+
+.honor-n--plata .honor-n__icon { background: #94a3b8; }
+
+.honor-n--bronce {
+  background: linear-gradient(135deg, #fdba74, #cd7f32);
+  color: #431407;
+}
+
+.honor-n--bronce .honor-n__icon { background: #9a3412; }
+
+.honor-medal-label {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 0.25rem;
+}
+
+.honor-line--oro { border-left: 3px solid #f5c518; padding-left: 0.35rem; }
+.honor-line--plata { border-left: 3px solid #94a3b8; padding-left: 0.35rem; }
+.honor-line--bronce { border-left: 3px solid #cd7f32; padding-left: 0.35rem; }
 
 .top-body { display: grid; gap: 0.4rem; }
 

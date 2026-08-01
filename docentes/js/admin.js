@@ -852,17 +852,26 @@
     board.innerHTML =
       lines
         .map(
-          (est) => `
-      <div class="honor-line">
-        <span class="honor-n">${est.n}°</span>
+          (est) => {
+            const medalKey = est.n === 1 ? "oro" : est.n === 2 ? "plata" : est.n === 3 ? "bronce" : "";
+            const medalLabel = est.n === 1 ? "Oro" : est.n === 2 ? "Plata" : est.n === 3 ? "Bronce" : "";
+            const placeBadge = medalKey
+              ? `<span class="honor-n honor-n--medal honor-n--${medalKey}" title="${medalLabel}" aria-label="${est.n}° ${medalLabel}">
+                  <span class="honor-n__icon" aria-hidden="true"></span>${est.n}°
+                </span>`
+              : `<span class="honor-n">${est.n}°</span>`;
+            return `
+      <div class="honor-line${medalKey ? ` honor-line--${medalKey}` : ""}">
+        ${placeBadge}
         ${(() => {
           const raw = honorFotoRaw(est);
           if (!raw) return "";
           if (C?.driveImgTag) return C.driveImgTag(raw, { alt: "", loading: "lazy" });
           return `<img src="${escapeHtml(resolveHonorFoto(raw))}" alt="" />`;
         })()}
-        <span>${escapeHtml(est.nombre)}</span>
-      </div>`
+        <span>${escapeHtml(est.nombre)}${medalLabel ? ` <em class="honor-medal-label">${medalLabel}</em>` : ""}</span>
+      </div>`;
+          }
         )
         .join("") +
       `<div class="admin-item__actions" style="margin-top:0.85rem">

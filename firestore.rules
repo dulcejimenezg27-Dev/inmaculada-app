@@ -6,34 +6,26 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Correos del panel Admin (deben coincidir con el usuario Firebase del admin)
-    function isAdmin() {
-      return signedIn()
-        && request.auth.token.email is string
-        && request.auth.token.email.lower() in [
-          'admin@inmaculada.app'
-        ];
-    }
+    // Admin publica con clave local (sin Authentication).
+    // Docentes también pueden escribir si están autenticados.
+    // Lectura pública para la app de familias.
 
-    // Comunicados: todos leen; docentes y admin (autenticados) escriben
     match /comunicados/{id} {
       allow read: if true;
-      allow create, update, delete: if signedIn();
+      allow create, update, delete: if true;
     }
 
-    // Cuadro de honor: todos leen; docentes y admin escriben
     match /puestos/{id} {
       allow read: if true;
-      allow create, update, delete: if signedIn();
+      allow create, update, delete: if true;
     }
 
-    // Agenda: todos leen; solo Admin escribe
     match /eventos/{id} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if true;
     }
 
-    // Me gusta (público, sin login): un like por dispositivo y comunicado
+    // Me gusta (público, sin login)
     match /likes/{likeId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasAll(['comunicadoId', 'clientId', 'createdAt'])
@@ -48,13 +40,12 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Perfil del docente (foto y nombre en publicaciones)
+    // Perfil docente: sí requiere Authentication (app docentes)
     match /perfiles/{uid} {
       allow read: if true;
       allow create, update, delete: if signedIn() && request.auth.uid == uid;
     }
 
-    // Lista opcional de docentes autorizados (solo se edita en la Consola)
     match /docentes_autorizados/{email} {
       allow read: if signedIn();
       allow write: if false;

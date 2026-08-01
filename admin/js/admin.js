@@ -36,36 +36,50 @@
     await persistLocal();
   }
 
-  /** Firestore: requiere usuario Firebase (admin se conecta al entrar al panel). */
-  async function tryCloudWrite(fn) {
+  /** Admin: clave local. Publica en Firestore sin Authentication. */
+  async function ensureCloudReady() {
     FB = window.InmaculadaFirebase || FB;
-    if (!FB?.configured) return false;
+    if (!FB) {
+      return { ok: false, reason: "Firebase aún no cargó. Espera un momento y reintenta." };
+    }
+    if (!FB.configured) {
+      return { ok: false, reason: "Firebase no está configurado en esta instalación." };
+    }
     try {
       if (FB.whenReady) await FB.whenReady();
-      if (!FB.auth?.currentUser) return false;
-      await fn();
-      return true;
+      if (!FB.db) {
+        return { ok: false, reason: "Firestore no está disponible." };
+      }
+      return { ok: true };
     } catch (err) {
-      console.warn(err);
-      return false;
+      console.error(err);
+      return { ok: false, reason: err?.message || "No se pudo conectar a Firebase" };
     }
   }
 
-  async function ensureAdminCloudSession() {
-    FB = window.InmaculadaFirebase || FB;
-    if (!FB?.configured) return false;
+  async function tryCloudWrite(fn) {
+    const ready = await ensureCloudReady();
+    if (!ready.ok) return ready;
     try {
-      if (FB.whenReady) await FB.whenReady();
-      const email = String(CFG.firebaseEmail || "").trim();
-      const pass = String(CFG.firebasePassword || "");
-      if (!email || !pass) return false;
-      if (FB.auth?.currentUser?.email?.toLowerCase() === email.toLowerCase()) return true;
-      await FB.signIn(email, pass);
-      return true;
+      await fn();
+      return { ok: true };
     } catch (err) {
-      console.error(err);
-      return false;
+      console.warn(err);
+      return {
+        ok: false,
+        reason:
+          err?.message ||
+          "Error al guardar en Firestore. Publica las reglas nuevas (escritura sin Auth para comunicados/puestos/eventos).",
+      };
     }
+  }
+
+  function cloudFailAlert(action, result) {
+    alert(
+      `${action} quedó en este dispositivo, pero NO se subió a la nube.\n` +
+        "Por eso la app pública no lo ve.\n\n" +
+        (result?.reason || "Error desconocido")
+    );
   }
 
   function escapeHtml(str) {
@@ -86,7 +100,9 @@
     const emailLabel = document.getElementById("admin-user-email");
     if (roleLabel) roleLabel.textContent = "Inmaculada Admin";
     if (emailLabel) {
-      emailLabel.textContent = FB?.auth?.currentUser?.email || "Colegio La Inmaculada";
+      emailLabel.textContent = FB?.configured
+        ? "Clave local · publica en la nube"
+        : "Clave local · sin nube";
     }
   }
 
@@ -131,7 +147,7 @@
       app.style.display = logged ? "block" : "none";
     }
     if (logged) {
-      const cloudOk = await ensureAdminCloudSession();
+      const cloud = await ensureCloudReady();
       applyRoleUI();
       await loadCloudData();
       try {
@@ -142,8 +158,13 @@
       } catch (err) {
         console.error(err);
       }
-      if (!cloudOk) {
-        console.warn("Admin sin sesión Firebase: solo guardará en local hasta configurar firebaseEmail.");
+      if (!cloud.ok) {
+        console.warn(cloud.reason);
+        alert(
+          "Entraste al panel, pero Firebase no está listo.\n" +
+            "Lo publicado podría no llegar a la app pública.\n\n" +
+            cloud.reason
+        );
       }
     }
   }
@@ -293,7 +314,9 @@
       if (!confirm("¿Eliminar este comunicado?")) return;
       comunicados = comunicados.filter((c) => c.id !== id);
       persistLocal();
-      tryCloudWrite(() => FB.removeComunicado(id));
+      tryCloudWrite(() => FB.removeComunicado(id)).then((cloud) => {
+        if (!cloud.ok) cloudFailAlert("La eliminación del comunicado", cloud);
+      });
       renderComunicados();
     }
   });
@@ -337,8 +360,10 @@
               apellidos: "La Inmaculada",
               nombreCompleto: "Colegio La Inmaculada",
               licenciatura: "Administración",
-              fotoUrl: "",
+              fotoUrl: C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg",
             };
+          } else if (!item.autor.fotoUrl) {
+            item.autor.fotoUrl = C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg";
           }
         }
       } else {
@@ -360,16 +385,17 @@
             apellidos: "La Inmaculada",
             nombreCompleto: "Colegio La Inmaculada",
             licenciatura: "Administración",
-            fotoUrl: "",
+            fotoUrl: C?.colegioLogoUrl ? C.colegioLogoUrl() : "/image/logoInmaculada.jpg",
           },
         };
         comunicados.unshift(item);
       }
 
       await persistLocal();
-      await tryCloudWrite(() => FB.saveComunicado(item));
+      const cloud = await tryCloudWrite(() => FB.saveComunicado(item));
       document.getElementById("modal-com").close();
       renderComunicados();
+      if (!cloud.ok) cloudFailAlert("El comunicado", cloud);
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -435,7 +461,9 @@
       if (!confirm("¿Eliminar este evento?")) return;
       eventos = eventos.filter((ev) => ev.id !== id);
       persist();
-      tryCloudWrite(() => FB.removeEvento(id));
+      tryCloudWrite(() => FB.removeEvento(id)).then((cloud) => {
+        if (!cloud.ok) cloudFailAlert("La eliminación del evento", cloud);
+      });
       renderEventos();
     }
   });
@@ -464,9 +492,10 @@
       eventos.push(item);
     }
     await persist();
-    if (item) await tryCloudWrite(() => FB.saveEvento(item));
+    const cloud = item ? await tryCloudWrite(() => FB.saveEvento(item)) : { ok: true };
     document.getElementById("modal-ev").close();
     renderEventos();
+    if (!cloud.ok) cloudFailAlert("El evento", cloud);
   });
 
   /* Cuadro de honor */
@@ -505,17 +534,26 @@
     board.innerHTML =
       lines
         .map(
-          (est) => `
-      <div class="honor-line">
-        <span class="honor-n">${est.n}°</span>
+          (est) => {
+            const medalKey = est.n === 1 ? "oro" : est.n === 2 ? "plata" : est.n === 3 ? "bronce" : "";
+            const medalLabel = est.n === 1 ? "Oro" : est.n === 2 ? "Plata" : est.n === 3 ? "Bronce" : "";
+            const placeBadge = medalKey
+              ? `<span class="honor-n honor-n--medal honor-n--${medalKey}" title="${medalLabel}" aria-label="${est.n}° ${medalLabel}">
+                  <span class="honor-n__icon" aria-hidden="true"></span>${est.n}°
+                </span>`
+              : `<span class="honor-n">${est.n}°</span>`;
+            return `
+      <div class="honor-line${medalKey ? ` honor-line--${medalKey}` : ""}">
+        ${placeBadge}
         ${(() => {
           const raw = honorFotoRaw(est);
           if (!raw) return "";
           if (C?.driveImgTag) return C.driveImgTag(raw, { alt: "", loading: "lazy" });
           return `<img src="${escapeHtml(resolveHonorFoto(raw))}" alt="" />`;
         })()}
-        <span>${escapeHtml(est.nombre)}</span>
-      </div>`
+        <span>${escapeHtml(est.nombre)}${medalLabel ? ` <em class="honor-medal-label">${medalLabel}</em>` : ""}</span>
+      </div>`;
+          }
         )
         .join("") +
       `<div class="admin-item__actions" style="margin-top:0.85rem">
@@ -676,7 +714,9 @@
       if (!confirm("¿Eliminar este cuadro de honor?")) return;
       delete puestosMap[puestosKey(salon, periodo)];
       persistLocal();
-      tryCloudWrite(() => FB.removePuestosEntry(salon, periodo));
+      tryCloudWrite(() => FB.removePuestosEntry(salon, periodo)).then((cloud) => {
+        if (!cloud.ok) cloudFailAlert("La eliminación del cuadro de honor", cloud);
+      });
       renderHonor();
     }
   });
@@ -766,16 +806,16 @@
 
     try {
       await persistLocal();
-      await tryCloudWrite(() => FB.savePuestosEntry(entry));
+      const cloud = await tryCloudWrite(() => FB.savePuestosEntry(entry));
+      document.getElementById("admin-filtro-salon").value = salon;
+      document.getElementById("admin-filtro-periodo").value = periodo;
+      document.getElementById("modal-honor").close();
+      renderHonor();
+      if (!cloud.ok) cloudFailAlert("El cuadro de honor", cloud);
     } catch {
       alert("No se pudo guardar. Prueba con fotos más livianas o usa link de Drive.");
       return;
     }
-
-    document.getElementById("admin-filtro-salon").value = salon;
-    document.getElementById("admin-filtro-periodo").value = periodo;
-    document.getElementById("modal-honor").close();
-    renderHonor();
   });
 
   /* Publicar */

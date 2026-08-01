@@ -32,6 +32,7 @@
   let likesCounts = {};
   let likesMine = new Set();
   let likeBusy = new Set();
+  let perfilesByUid = {};
   let filtro = "todos";
   let mesActual = new Date();
   mesActual.setDate(1);
@@ -108,6 +109,24 @@
   window.addEventListener("hashchange", () => showView(currentHash()));
 
   /* Comunicados (solo lectura + me gusta) */
+  function enrichAutor(autor) {
+    if (!autor || typeof autor !== "object") return autor;
+    const uid = autor.uid;
+    const perfil = uid ? perfilesByUid[uid] : null;
+    if (!perfil) return autor;
+    return {
+      ...autor,
+      nombres: autor.nombres || perfil.nombres || "",
+      apellidos: autor.apellidos || perfil.apellidos || "",
+      nombreCompleto:
+        autor.nombreCompleto ||
+        [perfil.nombres, perfil.apellidos].filter(Boolean).join(" ") ||
+        autor.nombreCompleto,
+      licenciatura: autor.licenciatura || perfil.licenciatura || "",
+      fotoUrl: perfil.fotoUrl || autor.fotoUrl || "",
+    };
+  }
+
   function likeButtonHtml(comId) {
     const count = likesCounts[comId] || 0;
     const liked = likesMine.has(comId);
@@ -137,7 +156,7 @@
       <article class="feed-item" data-id="${c.id}">
         ${
           C && C.autorMetaHtml
-            ? C.autorMetaHtml(c.autor, formatFecha(c.fecha), c.categoria)
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
             : `<div class="feed-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
           <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
@@ -370,9 +389,16 @@
       return;
     }
 
+    const MEDALLAS = {
+      1: { key: "oro", label: "Oro" },
+      2: { key: "plata", label: "Plata" },
+      3: { key: "bronce", label: "Bronce" },
+    };
+
     const topHtml = data.top
       .map((est, i) => {
         const place = i + 1;
+        const medal = MEDALLAS[place] || null;
         const rawFoto = est.fotoDrive || est.foto || "";
         let photo = "";
         if (rawFoto && C?.driveImgTag) {
@@ -391,10 +417,23 @@
         if (!photo) {
           photo = `<div class="puestos-card__photo puestos-card__photo--empty" aria-hidden="true">${place}</div>`;
         }
+        const medalHtml = medal
+          ? `<span class="honor-medal honor-medal--${medal.key}" title="${medal.label}" aria-label="${place}° lugar, medalla de ${medal.label}">
+              <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                <circle cx="32" cy="36" r="20" class="honor-medal__disc"/>
+                <circle cx="32" cy="36" r="15" class="honor-medal__ring"/>
+                <path class="honor-medal__ribbon" d="M22 8 L32 18 L42 8 L38 28 L26 28 Z"/>
+                <text x="32" y="42" text-anchor="middle" class="honor-medal__num">${place}</text>
+              </svg>
+            </span>`
+          : "";
         return `
           <article class="puestos-card puestos-card--${place}">
-            ${photo}
-            <span class="puestos-card__place">${place}° lugar</span>
+            <div class="puestos-card__media">
+              ${photo}
+              ${medalHtml}
+            </div>
+            <span class="puestos-card__place">${place}° lugar · ${medal ? medal.label : ""}</span>
             <h3 class="puestos-card__name">${escapeHtml(est.nombre)}</h3>
           </article>`;
       })
@@ -670,11 +709,12 @@
 
       // Carga inmediata desde la nube (no solo el listener)
       try {
-        const [coms, puestos, evs, likes] = await Promise.all([
+        const [coms, puestos, evs, likes, perfiles] = await Promise.all([
           FB.fetchComunicados(),
           FB.fetchPuestosMap(),
           FB.fetchEventos(),
           FB.fetchLikesState ? FB.fetchLikesState() : Promise.resolve(null),
+          FB.fetchPerfilesMap ? FB.fetchPerfilesMap() : Promise.resolve({}),
         ]);
         if (Array.isArray(coms)) {
           comunicados = coms;
@@ -687,6 +727,9 @@
         if (Array.isArray(evs)) {
           eventos = evs;
           if (C) C.save(C.STORAGE.eventos, eventos);
+        }
+        if (perfiles && typeof perfiles === "object") {
+          perfilesByUid = perfiles;
         }
         if (likes) applyLikesState(likes);
       } catch (err) {
@@ -716,6 +759,14 @@
 
       if (FB.watchLikes) {
         FB.watchLikes((state) => applyLikesState(state));
+      }
+
+      if (FB.watchPerfiles) {
+        FB.watchPerfiles((map) => {
+          if (!map || typeof map !== "object") return;
+          perfilesByUid = map;
+          if (currentHash() === "comunicados") renderComunicados();
+        });
       }
 
       showView(currentHash());

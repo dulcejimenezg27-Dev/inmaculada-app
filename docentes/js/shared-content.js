@@ -126,16 +126,34 @@ window.InmaculadaContent = (() => {
   function driveImageCandidates(url) {
     const raw = String(url || "").trim();
     if (!raw) return [];
+    if (raw.startsWith("data:")) return [raw];
+    // Logo u otras rutas del sitio
+    if (raw.startsWith("/") && !raw.startsWith("//")) {
+      try {
+        return [new URL(raw, window.location.origin).href];
+      } catch {
+        return [raw];
+      }
+    }
     const id = extractDriveId(raw);
     if (!id) {
-      if (/^https?:\/\//i.test(raw) && !/drive\.google\.com/i.test(raw)) return [raw];
+      if (/^https?:\/\//i.test(raw)) return [raw];
       return [];
     }
     return [
       `https://lh3.googleusercontent.com/d/${id}=w1000`,
-      `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
       `https://lh3.googleusercontent.com/d/${id}`,
+      `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
+      `https://drive.google.com/thumbnail?id=${id}&sz=s1000`,
     ];
+  }
+
+  function colegioLogoUrl() {
+    try {
+      return new URL("/image/logoInmaculada.jpg", window.location.origin).href;
+    } catch {
+      return "/image/logoInmaculada.jpg";
+    }
   }
 
   function youtubeEmbedUrl(url) {
@@ -198,10 +216,12 @@ window.InmaculadaContent = (() => {
   function imgFallbackOnErrorAttr(fallbacks) {
     const list = (fallbacks || []).filter(Boolean);
     if (!list.length) {
-      return `onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.hidden=false"`;
+      return `onerror="this.style.display='none';var n=this.nextElementSibling;if(n){n.hidden=false;n.style.display='';}"`;
     }
-    return `data-fallbacks="${list.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i<f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];}else{el.style.display='none';if(el.nextElementSibling)el.nextElementSibling.hidden=false;}})(this)"`;
+    return `data-fallbacks="${list.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i<f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];}else{el.style.display='none';var n=el.nextElementSibling;if(n){n.hidden=false;n.style.display='';}}})(this)"`;
   }
+
+  const IMG_SAFE_ATTRS = 'referrerpolicy="no-referrer" decoding="async"';
 
   /**
    * <img> con reintentos para Drive.
@@ -213,19 +233,14 @@ window.InmaculadaContent = (() => {
     if (!raw) return "";
     const cls = opts.className ? ` class="${escapeAttr(opts.className)}"` : "";
     const alt = ` alt="${escapeAttr(opts.alt || "")}"`;
-    const loading = opts.loading ? ` loading="${escapeAttr(opts.loading)}"` : "";
+    const loading = opts.loading ? ` loading="${escapeAttr(opts.loading)}"` : ' loading="lazy"';
     if (raw.startsWith("data:")) {
-      return `<img${cls} src="${escapeAttr(raw)}"${alt}${loading} />`;
+      return `<img${cls} src="${escapeAttr(raw)}"${alt}${loading} ${IMG_SAFE_ATTRS} />`;
     }
     const candidates = driveImageCandidates(raw);
-    if (!candidates.length) {
-      if (/^https?:\/\//i.test(raw)) {
-        return `<img${cls} src="${escapeAttr(raw)}"${alt}${loading} onerror="this.style.display='none'" />`;
-      }
-      return "";
-    }
+    if (!candidates.length) return "";
     const [first, ...rest] = candidates;
-    return `<img${cls} src="${escapeAttr(first)}"${alt}${loading} ${imgFallbackOnErrorAttr(rest)} />`;
+    return `<img${cls} src="${escapeAttr(first)}"${alt}${loading} ${IMG_SAFE_ATTRS} ${imgFallbackOnErrorAttr(rest)} />`;
   }
 
   /** Asigna src a un <img> probando candidatas de Drive. */
@@ -236,27 +251,26 @@ window.InmaculadaContent = (() => {
       if (typeof onFail === "function") onFail();
       return;
     }
+    try {
+      img.referrerPolicy = "no-referrer";
+    } catch {
+      /* ignore */
+    }
     if (raw.startsWith("data:")) {
       img.onerror = null;
       img.hidden = false;
+      img.style.display = "";
       img.src = raw;
       return;
     }
     const candidates = driveImageCandidates(raw);
     if (!candidates.length) {
-      if (/^https?:\/\//i.test(raw)) {
-        img.onerror = () => {
-          if (typeof onFail === "function") onFail();
-        };
-        img.hidden = false;
-        img.src = raw;
-        return;
-      }
       if (typeof onFail === "function") onFail();
       return;
     }
     let i = 0;
     img.hidden = false;
+    img.style.display = "";
     img.onerror = () => {
       i += 1;
       if (i < candidates.length) img.src = candidates[i];
@@ -264,6 +278,7 @@ window.InmaculadaContent = (() => {
     };
     img.onload = () => {
       img.hidden = false;
+      img.style.display = "";
     };
     img.src = candidates[0];
   }
@@ -282,11 +297,21 @@ window.InmaculadaContent = (() => {
     const nombre =
       (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
       "Colegio La Inmaculada";
-    const candidates = driveImageCandidates(autor?.fotoUrl || "");
     const initials = inicialesNombre(nombre);
-    if (candidates.length) {
-      const [first, ...rest] = candidates;
-      return `<img class="feed-author__avatar" src="${escapeAttr(first)}" alt="" loading="lazy" ${imgFallbackOnErrorAttr(rest)} /><span class="feed-author__avatar feed-author__avatar--fallback" hidden aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+    let fotoRaw = String(autor?.fotoUrl || "").trim();
+    const esColegio =
+      !autor ||
+      autor.uid === "admin" ||
+      /colegio la inmaculada/i.test(nombre);
+    if (!fotoRaw && esColegio) fotoRaw = colegioLogoUrl();
+
+    if (fotoRaw) {
+      const candidates = driveImageCandidates(fotoRaw);
+      if (candidates.length) {
+        const [first, ...rest] = candidates;
+        // Iniciales solo como respaldo oculto; el CSS [hidden] evita el doble círculo
+        return `<img class="feed-author__avatar" src="${escapeAttr(first)}" alt="" loading="lazy" ${IMG_SAFE_ATTRS} data-fallbacks="${rest.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');n.style.display='inline-flex';}})(this)" /><span class="feed-author__avatar feed-author__avatar--fallback" hidden style="display:none" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+      }
     }
     return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
   }
@@ -318,21 +343,32 @@ window.InmaculadaContent = (() => {
     const yt = youtubeEmbedUrl(comunicado.videoYoutube || "");
     if (yt) {
       parts.push(
-        `<div class="media-embed"><iframe src="${yt}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe></div>`
+        `<div class="media-embed"><iframe src="${escapeAttr(yt)}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
       );
     }
-    const driveVid = drivePreviewUrl(comunicado.videoDrive || "");
+    const driveVidId = extractDriveId(comunicado.videoDrive || "");
+    const driveVid = driveVidId ? `https://drive.google.com/file/d/${driveVidId}/preview` : "";
     if (driveVid) {
       parts.push(
-        `<div class="media-embed"><iframe src="${driveVid}" title="Video de Drive" allow="autoplay" allowfullscreen loading="lazy"></iframe></div>`
+        `<div class="media-embed"><iframe src="${escapeAttr(driveVid)}" title="Video de Drive" allow="autoplay" allowfullscreen loading="lazy"></iframe></div>`
       );
     }
-    const imgCandidates = driveImageCandidates(comunicado.imagenDrive || "");
-    if (imgCandidates.length) {
-      const [first, ...rest] = imgCandidates;
-      parts.push(
-        `<div class="media-image"><img src="${escapeAttr(first)}" alt="Imagen del comunicado" loading="lazy" ${imgFallbackOnErrorAttr(rest)} /></div>`
-      );
+
+    const imagenRaw = String(comunicado.imagenDrive || "").trim();
+    const imgId = extractDriveId(imagenRaw);
+    const imgTag = imagenRaw ? driveImgTag(imagenRaw, { alt: "Imagen del comunicado", loading: "lazy" }) : "";
+    if (imgTag || imgId) {
+      const iframeFallback = imgId
+        ? `<div class="media-image__frame" hidden><iframe src="https://drive.google.com/file/d/${escapeAttr(imgId)}/preview" title="Imagen de Drive" loading="lazy" allow="autoplay"></iframe></div>`
+        : "";
+      if (imgTag) {
+        // El onerror del img debe revelar el iframe hermano
+        parts.push(`<div class="media-image">${imgTag}${iframeFallback}</div>`);
+      } else {
+        parts.push(
+          `<div class="media-image media-image--frame"><iframe src="https://drive.google.com/file/d/${escapeAttr(imgId)}/preview" title="Imagen de Drive" loading="lazy" allow="autoplay"></iframe></div>`
+        );
+      }
     }
     return parts.join("");
   }
@@ -398,6 +434,7 @@ window.InmaculadaContent = (() => {
     resolveDisplayImage,
     driveImgTag,
     setDriveImage,
+    colegioLogoUrl,
     inicialesNombre,
     autorAvatarHtml,
     autorMetaHtml,
