@@ -89,7 +89,7 @@
     if (name === "agenda") renderAgenda();
     if (name === "puestos") renderPuestos();
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   function currentHash() {
@@ -99,20 +99,27 @@
       : "inicio";
   }
 
+  /** Cambia de vista al toque; usa history para no forzar scroll al #id del DOM. */
+  function navigateTo(target) {
+    if (!target) return;
+    showView(target);
+    const next = `#${target}`;
+    if (location.hash !== next) {
+      history.pushState(null, "", next);
+    }
+  }
+
   document.querySelectorAll("[data-nav]").forEach((el) => {
     el.addEventListener("click", (e) => {
       const target = el.getAttribute("data-nav");
       if (!target) return;
       e.preventDefault();
-      if (location.hash !== `#${target}`) {
-        location.hash = target;
-      } else {
-        showView(target);
-      }
+      navigateTo(target);
     });
   });
 
   window.addEventListener("hashchange", () => showView(currentHash()));
+  window.addEventListener("popstate", () => showView(currentHash()));
 
   /* Comunicados (solo lectura + me gusta) */
   function enrichAutor(autor) {
@@ -254,7 +261,7 @@
       .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
 
     if (!items.length) {
-      list.innerHTML = `<div class="empty">No hay publicaciones del personero en esta categoría.</div>`;
+      list.innerHTML = `<div class="empty">No hay publicaciones de personería en esta categoría.</div>`;
       return;
     }
 

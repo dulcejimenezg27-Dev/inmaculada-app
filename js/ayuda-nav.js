@@ -50,92 +50,113 @@
 
   const CONTENT = {
     publica: {
-      title: "Ayuda · App pública",
+      title: "Ayuda · Inmaculada App",
       lead: "Guía rápida para familias y estudiantes.",
       html: `
         <h3>Cómo moverte</h3>
-        <p>Usa el menú superior (computador) o la barra inferior (celular).</p>
+        <p>Usa el menú superior (computador) o la barra inferior (celular). En Inicio también hay accesos rápidos.</p>
         <ul>
           <li><strong>Inicio:</strong> logo, accesos rápidos, redes y cómo llegar.</li>
           <li><strong>Pagos:</strong> paga con PSE y envía el soporte por WhatsApp.</li>
           <li><strong>Comunicados:</strong> avisos oficiales del colegio (solo lectura).</li>
-          <li><strong>Bienestar:</strong> orientación y consejos de psicología escolar.</li>
-          <li><strong>Personero:</strong> propuestas y mensajes del gobierno estudiantil.</li>
-          <li><strong>Agenda:</strong> eventos escolares del mes.</li>
-          <li><strong>Cuadro de honor:</strong> destacados por salón y período.</li>
+          <li><strong>Bienestar:</strong> orientación de psicología escolar.</li>
+          <li><strong>Personería:</strong> mensajes del gobierno estudiantil.</li>
+          <li><strong>Agenda:</strong> eventos del mes en calendario.</li>
+          <li><strong>Cuadro de honor:</strong> destacados por salón y período (oro, plata y bronce).</li>
           <li><strong>Símbolos:</strong> bandera, escudo e himno (próximamente).</li>
         </ul>
-        <h3>Accesos rápidos</h3>
-        <p>En Inicio también encuentras Pruebas parciales, Instagram, Facebook y Google Maps.</p>
+        <h3>Me gusta</h3>
+        <p>En <strong>Comunicados</strong>, <strong>Bienestar</strong> y <strong>Personería</strong> puedes tocar el corazón ♡ para dar me gusta. No necesitas iniciar sesión.</p>
+        <h3>Filtros</h3>
+        <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.).</p>
+        <h3>Otros accesos</h3>
+        <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook y Google Maps.</p>
         ${installHtml(INSTALL.publica)}
       `,
     },
     admin: {
       title: "Ayuda · Administración",
-      lead: "Guía del panel completo del colegio.",
+      lead: "Panel completo del colegio: perfil, comunicados, agenda y honor.",
       html: `
         <h3>Cómo entrar</h3>
-        <p>Inicia sesión con la contraseña de administración.</p>
-        <h3>Tu perfil</h3>
-        <p>Con <strong>Mi perfil</strong> puedes poner nombres, apellidos, cargo (<strong>Coordinador</strong>, <strong>Rector</strong> o <strong>Secretaria</strong>) y foto. Así te verán en los comunicados.</p>
+        <p>Inicia sesión con la <strong>contraseña de administración</strong> (no usa correo de Firebase).</p>
+        <h3>Tu perfil (importante)</h3>
+        <p>Antes de publicar, o con el botón <strong>Mi perfil</strong>, completa:</p>
         <ul>
-          <li><strong>Comunicados:</strong> crear, editar o eliminar avisos.</li>
-          <li><strong>Agenda:</strong> gestionar eventos (fecha, hora y descripción).</li>
-          <li><strong>Cuadro de honor:</strong> publicar top 3 con foto y el resto con nombres.</li>
-          <li><strong>Publicar:</strong> descargar o importar <code>contenido.json</code> como respaldo.</li>
+          <li><strong>Nombres</strong> y <strong>apellidos</strong></li>
+          <li><strong>Cargo:</strong> Coordinador, Rector o Secretaria</li>
+          <li><strong>Foto:</strong> enlace de Drive (Compartir → cualquiera con el enlace → Visor)</li>
+        </ul>
+        <p>Así aparecerás como autor en los comunicados de la app pública.</p>
+        <h3>Qué puedes hacer</h3>
+        <ul>
+          <li><strong>Comunicados:</strong> crear, editar o eliminar avisos (texto, YouTube, imagen o video de Drive).</li>
+          <li><strong>Agenda:</strong> eventos con fecha, hora y descripción.</li>
+          <li><strong>Cuadro de honor:</strong> top 3 con foto (medallas oro/plata/bronce) y demás estudiantes con nombre.</li>
+          <li><strong>Publicar:</strong> descargar o importar <code>contenido.json</code> como respaldo local.</li>
         </ul>
         <h3>Consejo</h3>
-        <p>Usa <strong>Salir</strong> al terminar. Los docentes publican desde su propia app.</p>
+        <p>Usa <strong>Salir</strong> al terminar. Docentes, Bienestar y Personero publican desde sus propias apps (<code>/docentes/</code>, <code>/bienestar/</code>, <code>/personero/</code>).</p>
         ${installHtml(INSTALL.admin)}
       `,
     },
     docentes: {
       title: "Ayuda · Docentes",
-      lead: "Guía para publicar comunicados y cuadro de honor.",
+      lead: "Publica comunicados y cuadro de honor con tu perfil.",
       html: `
         <h3>Cómo entrar</h3>
-        <p>Usa el <strong>correo</strong> y la <strong>contraseña</strong> que te asignó el colegio (creados en Firebase).</p>
-        <h3>Tu perfil</h3>
-        <p>La primera vez te pedirá <strong>nombres</strong>, <strong>apellidos</strong>, licenciatura (opcional) y un <strong>enlace de foto de Drive</strong> (Compartir → cualquiera con el enlace → Visor). Así te verán en los comunicados. Puedes editarlo con <strong>Mi perfil</strong>.</p>
+        <p>Usa el <strong>correo</strong> y la <strong>contraseña</strong> que te asignó el colegio (creados en Firebase Authentication).</p>
+        <h3>Tu perfil (obligatorio la primera vez)</h3>
+        <p>Al entrar te pedirá completar el perfil antes de publicar. También puedes editarlo con <strong>Mi perfil</strong>:</p>
+        <ul>
+          <li><strong>Nombres</strong> y <strong>apellidos</strong></li>
+          <li><strong>Licenciatura</strong> (opcional), ej. Lic. en Matemáticas</li>
+          <li><strong>Foto:</strong> enlace de Drive (Compartir → cualquiera con el enlace → Visor)</li>
+        </ul>
+        <p>Así te verán las familias en los comunicados (nombre, cargo/licenciatura y foto).</p>
         <h3>Qué puedes hacer</h3>
         <ul>
-          <li><strong>Comunicados:</strong> publicar avisos (texto y enlaces de YouTube o Drive).</li>
-          <li><strong>Cuadro de honor:</strong> publicar por salón y período.</li>
+          <li><strong>Comunicados:</strong> publicar, editar o eliminar avisos (texto + YouTube o Drive).</li>
+          <li><strong>Cuadro de honor:</strong> por salón y período; top 3 con foto y medallas; el resto solo nombres.</li>
         </ul>
+        <h3>Consejo</h3>
+        <p>Los avisos salen en la sección <strong>Comunicados</strong> de la app pública. Bienestar y Personero tienen sus propios paneles.</p>
         ${installHtml(INSTALL.docentes)}
       `,
     },
     bienestar: {
       title: "Ayuda · Bienestar",
-      lead: "Guía para publicar orientación desde psicología escolar.",
+      lead: "Orientación y psicología escolar para la comunidad.",
       html: `
         <h3>Cómo entrar</h3>
-        <p>Usa el correo <strong>psicologia@inmaculada.app</strong> y la contraseña creada en Firebase.</p>
-        <h3>Tu perfil</h3>
-        <p>La primera vez completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Psicóloga) y foto de Drive. Así te verán en Bienestar.</p>
-        <h3>Qué puedes hacer</h3>
+        <p>Correo <strong>psicologia@inmaculada.app</strong> y la contraseña creada en Firebase Authentication.</p>
+        <h3>Tu perfil (obligatorio la primera vez)</h3>
+        <p>Completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Psicóloga escolar) y foto de Drive. Edítalo cuando quieras con <strong>Mi perfil</strong>.</p>
+        <h3>Publicaciones</h3>
         <ul>
-          <li>Publicar textos con categorías: general, familia, emocional o convivencia.</li>
-          <li>Adjuntar YouTube o imagen/video de Drive, igual que en comunicados.</li>
+          <li>Solo puedes <strong>publicar</strong> (crear, editar o eliminar). No hay bandeja de mensajes.</li>
+          <li>Categorías: <strong>general</strong>, <strong>familia</strong>, <strong>emocional</strong>, <strong>convivencia</strong>.</li>
+          <li>Multimedia opcional: YouTube, imagen o video de Drive.</li>
         </ul>
-        <p>Las publicaciones aparecen en la app pública, en la sección <strong>Bienestar</strong>.</p>
+        <p>Aparecen en la app pública → sección <strong>Bienestar</strong>, donde las familias pueden dar me gusta.</p>
         ${installHtml(INSTALL.bienestar)}
       `,
     },
     personero: {
       title: "Ayuda · Personero",
-      lead: "Guía para publicar desde el personero estudiantil.",
+      lead: "Voz estudiantil y gobierno escolar.",
       html: `
         <h3>Cómo entrar</h3>
-        <p>Usa el correo <strong>personero@inmaculada.app</strong> y la contraseña creada en Firebase.</p>
-        <h3>Tu perfil</h3>
-        <p>La primera vez completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Personero) y foto de Drive.</p>
-        <h3>Qué puedes hacer</h3>
+        <p>Correo <strong>personero@inmaculada.app</strong> y la contraseña creada en Firebase Authentication.</p>
+        <h3>Tu perfil (obligatorio la primera vez)</h3>
+        <p>Completa <strong>nombres</strong>, <strong>apellidos</strong>, título (ej. Personero estudiantil) y foto de Drive. Edítalo con <strong>Mi perfil</strong>.</p>
+        <h3>Publicaciones</h3>
         <ul>
-          <li>Publicar con categorías: general, propuestas, actividades o derechos.</li>
-          <li>Adjuntar YouTube o imagen/video de Drive.</li>
+          <li>Solo puedes <strong>publicar</strong> (crear, editar o eliminar). No hay bandeja de mensajes.</li>
+          <li>Categorías: <strong>general</strong>, <strong>propuestas</strong>, <strong>actividades</strong>, <strong>derechos</strong>.</li>
+          <li>Multimedia opcional: YouTube, imagen o video de Drive.</li>
         </ul>
-        <p>Las publicaciones aparecen en la app pública, en la sección <strong>Personero</strong>.</p>
+        <p>Aparecen en la app pública → sección <strong>Personería</strong>, con me gusta para la comunidad.</p>
         ${installHtml(INSTALL.personero)}
       `,
     },
@@ -160,7 +181,7 @@
     dialog.innerHTML = `
       <div class="ayuda-panel">
         <div class="ayuda-panel__head">
-          <img src="${img}" alt="" width="48" height="48" />
+          <img src="${img}" alt="" width="96" height="96" />
           <div>
             <h2>${info.title}</h2>
             <p>${info.lead}</p>

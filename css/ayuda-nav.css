@@ -1,11 +1,11 @@
-/* Ayuda de navegación — botón discreto, sin tapar contenido */
+/* Ayuda de navegación — encima de la barra inferior en móvil */
 .ayuda-fab {
   position: fixed;
-  right: 0.85rem;
-  bottom: calc(var(--nav-h, 72px) + env(safe-area-inset-bottom, 0px) + 0.55rem);
-  z-index: 45;
-  width: 56px;
-  height: 56px;
+  right: 0.75rem;
+  bottom: calc(var(--nav-h, 96px) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  z-index: 40;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -37,11 +37,21 @@
   pointer-events: none;
 }
 
-/* Admin / docentes: sin barra inferior */
+/* App pública: un poco más arriba para no tapar Inicio/Pagos/etc. */
+body.ayuda-fab--publica .ayuda-fab {
+  bottom: calc(var(--nav-h, 96px) + env(safe-area-inset-bottom, 0px) + 0.9rem);
+  right: 0.65rem;
+}
+
+/* Paneles sin barra inferior */
 body.ayuda-fab--admin .ayuda-fab,
-body.ayuda-fab--docentes .ayuda-fab {
+body.ayuda-fab--docentes .ayuda-fab,
+body.ayuda-fab--bienestar .ayuda-fab,
+body.ayuda-fab--personero .ayuda-fab {
   bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
   right: 0.85rem;
+  width: 56px;
+  height: 56px;
 }
 
 .modal--ayuda {
@@ -72,15 +82,18 @@ body.ayuda-fab--docentes .ayuda-fab {
 .ayuda-panel__head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .ayuda-panel__head img {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  object-fit: contain;
+  object-position: center;
   flex-shrink: 0;
+  background: #e8f1fa;
+  box-shadow: 0 4px 14px rgba(0, 61, 120, 0.14);
 }
 
 .ayuda-panel__head h2 {
@@ -161,8 +174,12 @@ body.ayuda-fab--docentes .ayuda-fab {
   background: #003d78;
 }
 
-@media (min-width: 900px) {
-  .ayuda-fab {
+@media (min-width: 768px) {
+  .ayuda-fab,
+  body.ayuda-fab--publica .ayuda-fab {
     bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    right: 0.85rem;
+    width: 56px;
+    height: 56px;
   }
 }
