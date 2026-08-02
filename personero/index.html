@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Inmaculada Personero" />
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="/personero/manifest.json" />
   <title>Inmaculada Personero</title>
-  <link rel="icon" type="image/png" href="image/icon-192.png" />
-  <link rel="apple-touch-icon" href="image/icon-192.png" />
+  <link rel="icon" type="image/png" href="/personero/image/icon-192.png" />
+  <link rel="apple-touch-icon" href="/personero/image/icon-192.png" />
   <script>
     window.__pwaDeferredPrompt = null;
     window.addEventListener("beforeinstallprompt", function (e) {
@@ -19,6 +19,11 @@
       window.__pwaDeferredPrompt = e;
       window.dispatchEvent(new Event("pwa-bip"));
     });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/personero/sw.js", { scope: "/personero/" })
+        .catch(function () {});
+    }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,7 +31,15 @@
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="../css/ayuda-nav.css" />
 </head>
-<body data-ayuda-app="personero" data-ayuda-img="../image/ayudas.jpeg">
+<body
+  data-ayuda-app="personero"
+  data-ayuda-img="../image/ayudas.jpeg"
+  data-pwa-sw="/personero/sw.js"
+  data-pwa-scope="/personero/"
+  data-pwa-label="Instalar Personería"
+  data-pwa-dismiss-key="inmaculada_personero_install_dismissed"
+  data-pwa-done-key="inmaculada_personero_installed"
+>
   <div id="install-bar" class="install-bar" hidden>
     <button type="button" class="install-bar__btn" id="btn-install-app">
       <span id="install-bar-label">Instalar Personero</span>
@@ -209,6 +222,7 @@
   <script type="module" src="../js/firebase-init.js"></script>
   <script src="js/shared-content.js" defer></script>
   <script src="js/admin.js" defer></script>
+  <script src="../js/pwa-install.js" defer></script>
   <script src="../js/ayuda-nav.js" defer></script>
 </body>
 </html>

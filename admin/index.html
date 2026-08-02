@@ -8,18 +8,22 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Inmaculada Admin" />
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="/admin/manifest.json" />
   <title>Inmaculada Admin</title>
-  <link rel="icon" type="image/png" href="image/icon-192.png" />
-  <link rel="apple-touch-icon" href="image/icon-192.png" />
+  <link rel="icon" type="image/png" href="/admin/image/icon-192.png" />
+  <link rel="apple-touch-icon" href="/admin/image/icon-192.png" />
   <script>
-    /* Captura temprana: beforeinstallprompt puede dispararse antes de admin.js (defer) */
     window.__pwaDeferredPrompt = null;
     window.addEventListener("beforeinstallprompt", function (e) {
       e.preventDefault();
       window.__pwaDeferredPrompt = e;
       window.dispatchEvent(new Event("pwa-bip"));
     });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/admin/sw.js", { scope: "/admin/" })
+        .catch(function () {});
+    }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,7 +31,15 @@
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="../css/ayuda-nav.css" />
 </head>
-<body data-ayuda-app="admin" data-ayuda-img="../image/ayudas.jpeg">
+<body
+  data-ayuda-app="admin"
+  data-ayuda-img="../image/ayudas.jpeg"
+  data-pwa-sw="/admin/sw.js"
+  data-pwa-scope="/admin/"
+  data-pwa-label="Instalar Admin"
+  data-pwa-dismiss-key="inmaculada_admin_install_dismissed"
+  data-pwa-done-key="inmaculada_admin_installed"
+>
   <div id="install-bar" class="install-bar" hidden>
     <button type="button" class="install-bar__btn" id="btn-install-app">
       <span id="install-bar-label">Instalar Admin</span>
@@ -347,6 +359,7 @@
   <script type="module" src="../js/firebase-init.js"></script>
   <script src="js/shared-content.js"></script>
   <script src="js/admin.js"></script>
+  <script src="../js/pwa-install.js"></script>
   <script src="../js/ayuda-nav.js"></script>
 </body>
 </html>

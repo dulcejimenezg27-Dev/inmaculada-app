@@ -70,7 +70,7 @@
         <h3>Filtros</h3>
         <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.).</p>
         <h3>Otros accesos</h3>
-        <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook y Google Maps.</p>
+        <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook, el <strong>canal de WhatsApp</strong> del colegio y Google Maps.</p>
         ${installHtml(INSTALL.publica)}
       `,
     },

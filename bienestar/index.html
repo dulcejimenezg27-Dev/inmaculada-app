@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Inmaculada Bienestar" />
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="/bienestar/manifest.json" />
   <title>Inmaculada Bienestar</title>
-  <link rel="icon" type="image/png" href="image/icon-192.png" />
-  <link rel="apple-touch-icon" href="image/icon-192.png" />
+  <link rel="icon" type="image/png" href="/bienestar/image/icon-192.png" />
+  <link rel="apple-touch-icon" href="/bienestar/image/icon-192.png" />
   <script>
     window.__pwaDeferredPrompt = null;
     window.addEventListener("beforeinstallprompt", function (e) {
@@ -19,6 +19,11 @@
       window.__pwaDeferredPrompt = e;
       window.dispatchEvent(new Event("pwa-bip"));
     });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/bienestar/sw.js", { scope: "/bienestar/" })
+        .catch(function () {});
+    }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,7 +31,15 @@
   <link rel="stylesheet" href="css/admin.css" />
   <link rel="stylesheet" href="../css/ayuda-nav.css" />
 </head>
-<body data-ayuda-app="bienestar" data-ayuda-img="../image/ayudas.jpeg">
+<body
+  data-ayuda-app="bienestar"
+  data-ayuda-img="../image/ayudas.jpeg"
+  data-pwa-sw="/bienestar/sw.js"
+  data-pwa-scope="/bienestar/"
+  data-pwa-label="Instalar Bienestar"
+  data-pwa-dismiss-key="inmaculada_bienestar_install_dismissed"
+  data-pwa-done-key="inmaculada_bienestar_installed"
+>
   <div id="install-bar" class="install-bar" hidden>
     <button type="button" class="install-bar__btn" id="btn-install-app">
       <span id="install-bar-label">Instalar Bienestar</span>
@@ -209,6 +222,7 @@
   <script type="module" src="../js/firebase-init.js"></script>
   <script src="js/shared-content.js" defer></script>
   <script src="js/admin.js" defer></script>
+  <script src="../js/pwa-install.js" defer></script>
   <script src="../js/ayuda-nav.js" defer></script>
 </body>
 </html>

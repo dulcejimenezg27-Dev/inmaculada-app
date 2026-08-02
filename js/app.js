@@ -71,7 +71,12 @@
   }
 
   /* Navegación */
+  let activeViewName = null;
+
   function showView(name) {
+    const viewChanged = activeViewName !== name;
+    activeViewName = name;
+
     const views = document.querySelectorAll(".view");
     views.forEach((v) => {
       const active = v.id === name;
@@ -89,7 +94,10 @@
     if (name === "agenda") renderAgenda();
     if (name === "puestos") renderPuestos();
 
-    window.scrollTo({ top: 0, behavior: "auto" });
+    // Solo subir al cambiar de sección (evita el “brinco” al terminar de cargar Firebase)
+    if (viewChanged) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
   }
 
   function currentHash() {
@@ -593,140 +601,21 @@
   document.getElementById("filtro-salon")?.addEventListener("change", renderPuestos);
   document.getElementById("filtro-periodo")?.addEventListener("change", renderPuestos);
 
-  /* PWA */
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .then((reg) => reg.update().catch(() => {}))
-      .catch(() => {});
-  }
-
-  /* Instalación PWA: Android / Windows / iPhone */
-  const INSTALL_DISMISS_KEY = "inmaculada_install_dismissed";
-  const INSTALL_DONE_KEY = "inmaculada_app_installed";
-  let deferredPrompt = null;
-
-  const ua = navigator.userAgent || "";
-  const isIos =
-    /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const isAndroid = /Android/i.test(ua);
-  const isWindows = /Windows/i.test(ua) || /Win64|Win32|Win10|Win11/i.test(ua);
-  const isDesktopChrome =
-    /Chrome|Edg|Chromium/i.test(ua) && !/Mobile/i.test(ua);
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    window.matchMedia("(display-mode: minimal-ui)").matches ||
-    window.navigator.standalone === true;
-  const isFileProtocol = location.protocol === "file:";
-
-  const installBar = document.getElementById("install-bar");
-  const btnInstall = document.getElementById("btn-install-app");
-  const btnInstallClose = document.getElementById("btn-install-close");
-  const installLabel = document.getElementById("install-bar-label");
-  const modalIos = document.getElementById("modal-ios-install");
-  const modalWin = document.getElementById("modal-win-install");
-
-  function wasDismissed() {
-    return sessionStorage.getItem(INSTALL_DISMISS_KEY) === "1";
-  }
-
-  function wasInstalled() {
-    return localStorage.getItem(INSTALL_DONE_KEY) === "1";
-  }
-
-  function markInstalled() {
-    localStorage.setItem(INSTALL_DONE_KEY, "1");
-    deferredPrompt = null;
-    hideInstallBar();
-  }
-
-  function shouldOfferInstall() {
-    if (isStandalone || wasInstalled() || wasDismissed()) return false;
-    return isIos || isAndroid || isWindows || isDesktopChrome;
-  }
-
-  function showInstallBar() {
-    if (!installBar || !shouldOfferInstall()) return;
-    if (isIos && installLabel) installLabel.textContent = "Cómo instalar";
-    else if (installLabel) installLabel.textContent = "Instalar App";
-    installBar.hidden = false;
-    document.body.classList.add("has-install-bar");
-  }
-
-  function hideInstallBar() {
-    if (!installBar) return;
-    installBar.hidden = true;
-    document.body.classList.remove("has-install-bar");
-  }
-
-  function openWinInstallHelp() {
-    const note = document.getElementById("win-install-note");
-    if (note) {
-      note.textContent = isFileProtocol
-        ? "Estás abriendo el archivo directo. Para poder instalar, abre la app con un servidor local (http://localhost) en Chrome o Edge."
-        : "Si no ves la opción, recarga con Ctrl+Shift+R y vuelve a intentarlo.";
-    }
-    modalWin?.showModal();
-  }
-
-  // Si ya corre como app instalada, guardar y no mostrar el flotante
-  if (isStandalone) {
-    localStorage.setItem(INSTALL_DONE_KEY, "1");
-  }
-
-  window.addEventListener("beforeinstallprompt", (e) => {
-    // Si ya está marcada como instalada, no ofrecer de nuevo
-    if (wasInstalled() || isStandalone) {
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallBar();
-  });
-
-  window.addEventListener("appinstalled", () => {
-    markInstalled();
-  });
-
-  btnInstall?.addEventListener("click", async () => {
-    if (isIos) {
-      modalIos?.showModal();
-      return;
-    }
-
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      try {
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === "accepted") markInstalled();
-      } catch {
-        /* ignore */
-      }
-      deferredPrompt = null;
-      return;
-    }
-
-    openWinInstallHelp();
-  });
-
-  btnInstallClose?.addEventListener("click", () => {
-    sessionStorage.setItem(INSTALL_DISMISS_KEY, "1");
-    hideInstallBar();
-  });
+  /* PWA: registro e instalación viven en js/pwa-install.js */
 
   document.getElementById("btn-cerrar-ios")?.addEventListener("click", () => {
-    modalIos?.close();
+    document.getElementById("modal-ios-install")?.close();
   });
 
   document.getElementById("btn-cerrar-win")?.addEventListener("click", () => {
-    modalWin?.close();
+    document.getElementById("modal-win-install")?.close();
   });
 
-  if (shouldOfferInstall()) showInstallBar();
-  else hideInstallBar();
+  document.querySelector("[data-close-modal='modal-android-install']")?.addEventListener("click", () => {
+    document.getElementById("modal-android-install")?.close();
+  });
+
+  /* Comunicados filters already bound above */
 
   /* Soporte de pago por WhatsApp */
   function fillMesPagoSelect() {

@@ -1,5 +1,5 @@
 /* Service Worker — Inmaculada Bienestar PWA */
-const CACHE_NAME = "inmaculada-bienestar-v1";
+const CACHE_NAME = "inmaculada-bienestar-v2";
 const ASSETS = [
   "./",
   "./index.html",
