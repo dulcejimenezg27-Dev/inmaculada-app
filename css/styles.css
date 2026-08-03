@@ -1477,6 +1477,27 @@ body.has-install-bar .topbar {
   border: 2px solid rgba(0, 85, 164, 0.12);
 }
 
+.feed-author__avatar-btn {
+  display: inline-grid;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  border-radius: 50%;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.feed-author__avatar-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.feed-author__avatar-btn .feed-author__avatar {
+  display: block;
+}
+
 .feed-author__avatar--fallback {
   display: inline-flex;
   align-items: center;
@@ -1490,6 +1511,65 @@ body.has-install-bar .topbar {
 
 .feed-author__avatar--fallback[hidden] {
   display: none !important;
+}
+
+/* Foto de perfil ampliada */
+.avatar-zoom {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: calc(100vw - 1.5rem);
+}
+
+.avatar-zoom::backdrop {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.avatar-zoom__card {
+  position: relative;
+  width: min(88vw, 340px);
+  margin: 0 auto;
+  padding: 1.25rem 1.15rem 1.2rem;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  animation: fadeUp 0.28s ease both;
+}
+
+.avatar-zoom__close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.55rem;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.avatar-zoom__img {
+  width: min(72vw, 260px);
+  height: min(72vw, 260px);
+  margin: 0.35rem auto 0.85rem;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 4px solid #fff;
+  box-shadow: 0 12px 32px rgba(0, 61, 120, 0.28);
+  background: var(--blue-soft);
+}
+
+.avatar-zoom__name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--blue-deep);
 }
 
 .feed-author__info {
@@ -1674,6 +1754,81 @@ body.has-install-bar .topbar {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* Drive: miniatura tipo YouTube + reproducir al tocar */
+.media-drive-poster {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(0, 85, 164, 0.35), transparent 55%),
+    linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%);
+  color: #fff;
+}
+
+.media-drive-poster__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.media-drive-poster__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.55) 100%);
+  pointer-events: none;
+}
+
+.media-drive-poster__play {
+  position: relative;
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 210, 0, 0.95);
+  color: #003d78;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s ease;
+}
+
+.media-drive-poster:hover .media-drive-poster__play,
+.media-drive-poster:focus-visible .media-drive-poster__play {
+  transform: scale(1.06);
+}
+
+.media-drive-poster__play svg {
+  margin-left: 3px;
+}
+
+.media-drive-poster__label {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.7rem;
+  z-index: 1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+.media-embed--drive.is-playing iframe {
+  /* Recorta barras/chrome típicos del preview de Drive */
+  width: 100%;
+  height: 165%;
+  top: -32%;
+  left: 0;
 }
 
 .media-image {

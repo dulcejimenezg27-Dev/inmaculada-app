@@ -299,8 +299,9 @@
         if (pending.length) {
           const map = new Map(coms.map((c) => [c.id, c]));
           pending.forEach((p) => map.set(p.id, p));
-          comunicados = [...map.values()].sort((a, b) =>
-            String(b.fecha || "").localeCompare(String(a.fecha || ""))
+          comunicados = [...map.values()].sort(
+            C?.compareNewestFirst ||
+              ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")))
           );
         } else {
           comunicados = coms;
@@ -545,7 +546,9 @@
   function renderComunicados() {
     const list = document.getElementById("admin-lista-com");
     if (!list) return;
-    const items = [...comunicados].sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const items = [...comunicados].sort(
+      C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")))
+    );
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay comunicados.</div>`;
       return;

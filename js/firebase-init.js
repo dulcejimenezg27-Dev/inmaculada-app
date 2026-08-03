@@ -258,13 +258,23 @@ function watchPerfiles(callback) {
   );
 }
 
+function compareNewestFirst(a, b) {
+  const byFecha = String(b?.fecha || "").localeCompare(String(a?.fecha || ""));
+  if (byFecha) return byFecha;
+  const tb = String(b?.updatedAt || b?.createdAt || "");
+  const ta = String(a?.updatedAt || a?.createdAt || "");
+  const byTime = tb.localeCompare(ta);
+  if (byTime) return byTime;
+  return String(b?.id || "").localeCompare(String(a?.id || ""));
+}
+
 async function fetchComunicados() {
   await initPromise;
   if (!db) return [];
   const snap = await withTimeout(getDocs(collection(db, "comunicados")), 20000, "Carga de comunicados");
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+    .sort(compareNewestFirst);
 }
 
 async function saveComunicado(item) {
@@ -497,7 +507,7 @@ function watchComunicados(callback) {
     (snap) => {
       const items = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+        .sort(compareNewestFirst);
       callback(items);
     },
     (err) => console.error(err)

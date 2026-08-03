@@ -176,6 +176,17 @@ window.InmaculadaContent = (() => {
     return id ? `https://drive.google.com/file/d/${id}/preview` : "";
   }
 
+  /** Miniaturas candidatas para video/archivo de Drive (como la de YouTube). */
+  function driveVideoThumbCandidates(idOrUrl) {
+    const id = extractDriveId(idOrUrl) || String(idOrUrl || "").trim();
+    if (!id) return [];
+    return [
+      `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1280`,
+      `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1280`,
+      `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1000`,
+    ];
+  }
+
   function driveImageUrl(url) {
     const list = driveImageCandidates(url);
     return list[0] || "";
@@ -309,8 +320,12 @@ window.InmaculadaContent = (() => {
       const candidates = driveImageCandidates(fotoRaw);
       if (candidates.length) {
         const [first, ...rest] = candidates;
+        const id = extractDriveId(fotoRaw);
+        const large = id
+          ? `https://lh3.googleusercontent.com/d/${id}=w1600`
+          : first;
         // Iniciales solo como respaldo oculto; el CSS [hidden] evita el doble círculo
-        return `<img class="feed-author__avatar" src="${escapeAttr(first)}" alt="" loading="lazy" ${IMG_SAFE_ATTRS} data-fallbacks="${rest.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');n.style.display='inline-flex';}})(this)" /><span class="feed-author__avatar feed-author__avatar--fallback" hidden style="display:none" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
+        return `<button type="button" class="feed-author__avatar-btn" data-avatar-zoom data-avatar-src="${escapeAttr(large)}" data-avatar-fallbacks="${[first, ...rest].map(escapeAttr).join("|")}" data-avatar-name="${escapeAttr(nombre)}" aria-label="Ver foto de ${escapeAttr(nombre)}"><img class="feed-author__avatar" src="${escapeAttr(first)}" alt="" loading="lazy" ${IMG_SAFE_ATTRS} data-fallbacks="${rest.map(escapeAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');n.style.display='inline-flex';}})(this)" /><span class="feed-author__avatar feed-author__avatar--fallback" hidden style="display:none" aria-hidden="true">${escapeHtmlText(initials)}</span></button>`;
       }
     }
     return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
@@ -343,14 +358,28 @@ window.InmaculadaContent = (() => {
     const yt = youtubeEmbedUrl(comunicado.videoYoutube || "");
     if (yt) {
       parts.push(
-        `<div class="media-embed"><iframe src="${escapeAttr(yt)}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
+        `<div class="media-embed media-embed--youtube"><iframe src="${escapeAttr(yt)}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
       );
     }
     const driveVidId = extractDriveId(comunicado.videoDrive || "");
-    const driveVid = driveVidId ? `https://drive.google.com/file/d/${driveVidId}/preview` : "";
-    if (driveVid) {
+    if (driveVidId) {
+      const thumbs = driveVideoThumbCandidates(driveVidId);
+      const [first, ...rest] = thumbs;
+      const img =
+        first
+          ? `<img class="media-drive-poster__img" src="${escapeAttr(first)}" alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async" ${imgFallbackOnErrorAttr(rest)} />`
+          : "";
       parts.push(
-        `<div class="media-embed"><iframe src="${escapeAttr(driveVid)}" title="Video de Drive" allow="autoplay" allowfullscreen loading="lazy"></iframe></div>`
+        `<div class="media-embed media-embed--drive" data-drive-id="${escapeAttr(driveVidId)}">
+          <button type="button" class="media-drive-poster" data-drive-play aria-label="Reproducir video de Drive">
+            ${img}
+            <span class="media-drive-poster__shade" aria-hidden="true"></span>
+            <span class="media-drive-poster__play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
+            </span>
+            <span class="media-drive-poster__label">Video de Drive · Toca para ver</span>
+          </button>
+        </div>`
       );
     }
 
@@ -362,7 +391,6 @@ window.InmaculadaContent = (() => {
         ? `<div class="media-image__frame" hidden><iframe src="https://drive.google.com/file/d/${escapeAttr(imgId)}/preview" title="Imagen de Drive" loading="lazy" allow="autoplay"></iframe></div>`
         : "";
       if (imgTag) {
-        // El onerror del img debe revelar el iframe hermano
         parts.push(`<div class="media-image">${imgTag}${iframeFallback}</div>`);
       } else {
         parts.push(
@@ -415,6 +443,93 @@ window.InmaculadaContent = (() => {
     URL.revokeObjectURL(a.href);
   }
 
+  /** Más reciente primero: fecha, luego updatedAt/createdAt. */
+  function compareNewestFirst(a, b) {
+    const byFecha = String(b?.fecha || "").localeCompare(String(a?.fecha || ""));
+    if (byFecha) return byFecha;
+    const tb = String(b?.updatedAt || b?.createdAt || "");
+    const ta = String(a?.updatedAt || a?.createdAt || "");
+    const byTime = tb.localeCompare(ta);
+    if (byTime) return byTime;
+    return String(b?.id || "").localeCompare(String(a?.id || ""));
+  }
+
+  function sortNewestFirst(items) {
+    return [...(items || [])].sort(compareNewestFirst);
+  }
+
+  /** Lightbox de foto de perfil (tipo redes). */
+  function ensureAvatarLightbox() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("modal-avatar-zoom")) return;
+
+    const dialog = document.createElement("dialog");
+    dialog.id = "modal-avatar-zoom";
+    dialog.className = "avatar-zoom";
+    dialog.innerHTML = `
+      <div class="avatar-zoom__card">
+        <button type="button" class="avatar-zoom__close" data-avatar-close aria-label="Cerrar">×</button>
+        <img class="avatar-zoom__img" id="avatar-zoom-img" alt="" referrerpolicy="no-referrer" />
+        <p class="avatar-zoom__name" id="avatar-zoom-name"></p>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+
+    const img = dialog.querySelector("#avatar-zoom-img");
+    const nameEl = dialog.querySelector("#avatar-zoom-name");
+
+    function closeZoom() {
+      if (dialog.open) dialog.close();
+      else dialog.removeAttribute("open");
+    }
+
+    function openZoom(src, name, fallbacks) {
+      if (!img) return;
+      const list = [src, ...(fallbacks || [])].filter(Boolean);
+      let i = 0;
+      img.onerror = () => {
+        i += 1;
+        if (i < list.length) img.src = list[i];
+      };
+      img.src = list[0] || "";
+      if (nameEl) nameEl.textContent = name || "";
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+
+    document.addEventListener("click", (e) => {
+      const closeBtn = e.target.closest("[data-avatar-close]");
+      if (closeBtn) {
+        e.preventDefault();
+        closeZoom();
+        return;
+      }
+      const btn = e.target.closest("[data-avatar-zoom]");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const src = btn.getAttribute("data-avatar-src") || "";
+      const name = btn.getAttribute("data-avatar-name") || "";
+      const fallbacks = (btn.getAttribute("data-avatar-fallbacks") || "")
+        .split("|")
+        .filter(Boolean);
+      if (!src && !fallbacks.length) return;
+      openZoom(src || fallbacks[0], name, fallbacks);
+    });
+
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) closeZoom();
+    });
+  }
+
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", ensureAvatarLightbox);
+    } else {
+      ensureAvatarLightbox();
+    }
+  }
+
   return {
     STORAGE,
     GRADOS,
@@ -428,6 +543,7 @@ window.InmaculadaContent = (() => {
     uid,
     youtubeEmbedUrl,
     drivePreviewUrl,
+    driveVideoThumbCandidates,
     driveImageUrl,
     driveImageCandidates,
     resolveFotoUrl,
@@ -444,5 +560,8 @@ window.InmaculadaContent = (() => {
     applyBundle,
     hydrateFromFile,
     downloadBundle,
+    compareNewestFirst,
+    sortNewestFirst,
+    ensureAvatarLightbox,
   };
 })();

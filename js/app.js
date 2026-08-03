@@ -191,7 +191,7 @@
     const list = document.getElementById("lista-comunicados");
     const items = comunicados
       .filter((c) => filtro === "todos" || c.categoria === filtro)
-      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
 
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay comunicados en esta categoría.</div>`;
@@ -368,6 +368,18 @@
   document.getElementById("lista-comunicados")?.addEventListener("click", handleLikeClick);
   document.getElementById("lista-bienestar")?.addEventListener("click", handleLikeClick);
   document.getElementById("lista-personero")?.addEventListener("click", handleLikeClick);
+
+  /* Video Drive: miniatura → reproducir al tocar */
+  document.getElementById("main")?.addEventListener("click", (e) => {
+    const playBtn = e.target.closest("[data-drive-play]");
+    if (!playBtn) return;
+    e.preventDefault();
+    const wrap = playBtn.closest(".media-embed--drive");
+    const id = wrap?.getAttribute("data-drive-id");
+    if (!wrap || !id || wrap.classList.contains("is-playing")) return;
+    wrap.classList.add("is-playing");
+    wrap.innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview" title="Video de Drive" allow="autoplay; encrypted-media" allowfullscreen loading="eager"></iframe>`;
+  });
 
   document.querySelector("#comunicados .filters")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-filter]");

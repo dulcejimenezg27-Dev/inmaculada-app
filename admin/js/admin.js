@@ -424,7 +424,9 @@
   function renderComunicados() {
     const list = document.getElementById("admin-lista-com");
     if (!list) return;
-    const items = [...comunicados].sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const items = [...comunicados].sort(
+      C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")))
+    );
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay comunicados.</div>`;
       return;
