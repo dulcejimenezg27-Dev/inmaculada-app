@@ -516,18 +516,6 @@
   }
 
   document.getElementById("main")?.addEventListener("click", (e) => {
-    const ytBtn = e.target.closest("[data-yt-play]");
-    if (ytBtn) {
-      e.preventDefault();
-      const wrap = ytBtn.closest(".media-embed--youtube");
-      const src = wrap?.getAttribute("data-yt-src");
-      if (!wrap || !src || wrap.classList.contains("is-playing")) return;
-      const sep = src.includes("?") ? "&" : "?";
-      wrap.classList.add("is-playing");
-      wrap.innerHTML = `<iframe src="${src}${sep}autoplay=1&rel=0&modestbranding=1" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
-      return;
-    }
-
     const playBtn = e.target.closest("[data-drive-play]");
     if (!playBtn) return;
     e.preventDefault();

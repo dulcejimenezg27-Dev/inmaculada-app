@@ -430,23 +430,11 @@ window.InmaculadaContent = (() => {
     const ytRaw = comunicado.videoYoutube || "";
     const ytId = youtubeVideoId(ytRaw);
     const yt = ytId ? `https://www.youtube.com/embed/${ytId}` : "";
-    if (yt && ytId) {
+    if (yt) {
       const shorts = isYoutubeShorts(ytRaw);
-      const thumbs = youtubeThumbCandidates(ytId);
-      const [first, ...rest] = thumbs;
-      const img = first
-        ? `<img class="media-yt-poster__img" src="${escapeAttr(first)}" alt="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" decoding="async" ${imgFallbackOnErrorAttr(rest)} />`
-        : "";
       parts.push(
-        `<div class="media-embed media-embed--youtube${shorts ? " media-embed--portrait" : " media-embed--landscape"}" data-orient="${shorts ? "portrait" : "auto"}"${shorts ? ' data-orient-hint="portrait" data-orient-locked="1"' : ""} data-yt-src="${escapeAttr(yt)}">
-          <button type="button" class="media-drive-poster" data-yt-play aria-label="Reproducir video de YouTube">
-            ${img}
-            <span class="media-drive-poster__shade" aria-hidden="true"></span>
-            <span class="media-drive-poster__play" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
-            </span>
-            <span class="media-drive-poster__label">YouTube · Toca para ver</span>
-          </button>
+        `<div class="media-embed media-embed--youtube${shorts ? " media-embed--portrait" : " media-embed--landscape"}"${shorts ? ' data-orient="portrait" data-orient-hint="portrait" data-orient-locked="1"' : ' data-orient="landscape"'} data-yt-src="${escapeAttr(yt)}">
+          <iframe src="${escapeAttr(yt)}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
         </div>`
       );
     }
