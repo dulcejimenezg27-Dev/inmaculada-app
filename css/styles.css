@@ -1955,9 +1955,11 @@ body.has-install-bar .topbar {
   border-top: 1px solid var(--line);
   padding: 0.4rem 0.2rem calc(0.4rem + var(--safe-bottom));
   box-shadow: 0 -8px 30px rgba(0, 85, 164, 0.08);
+  pointer-events: none;
 }
 
 .nav-mobile__item {
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: center;

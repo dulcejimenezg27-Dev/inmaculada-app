@@ -42,8 +42,9 @@
         <ol>
           <li>Abre la página en <strong>Safari</strong> (no en Chrome ni Instagram).</li>
           <li>Toca <strong>Compartir</strong> (cuadrado con flecha ↑).</li>
-          <li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>
-          <li>Confirma con <strong>Añadir</strong>. Quedará como <strong>${appName}</strong>.</li>
+          <li>Toca <strong>Ver más</strong>.</li>
+          <li>Elige <strong>Agregar a Inicio</strong>.</li>
+          <li>Confirma con <strong>Agregar</strong> y listo. Quedará como <strong>${appName}</strong>.</li>
         </ol>
       `;
   }
@@ -162,6 +163,155 @@
     },
   };
 
+  function enableFabDrag(btn, onTap) {
+    const storageKey = `inmaculada_ayuda_fab_pos_${detectApp()}`;
+    const THRESHOLD = 28;
+    let active = false;
+    let dragged = false;
+    let startX = 0;
+    let startY = 0;
+    let originLeft = 0;
+    let originTop = 0;
+    let startTime = 0;
+    let openLock = false;
+
+    function openHelp() {
+      if (openLock) return;
+      openLock = true;
+      try {
+        onTap();
+      } finally {
+        setTimeout(() => {
+          openLock = false;
+        }, 450);
+      }
+    }
+
+    function clamp(left, top) {
+      const margin = 8;
+      const maxLeft = Math.max(margin, window.innerWidth - btn.offsetWidth - margin);
+      const maxTop = Math.max(margin, window.innerHeight - btn.offsetHeight - margin);
+      return {
+        left: Math.min(maxLeft, Math.max(margin, left)),
+        top: Math.min(maxTop, Math.max(margin, top)),
+      };
+    }
+
+    function applyPos(left, top) {
+      const pos = clamp(left, top);
+      btn.style.left = `${pos.left}px`;
+      btn.style.top = `${pos.top}px`;
+      btn.style.right = "auto";
+      btn.style.bottom = "auto";
+      btn.classList.add("ayuda-fab--moved");
+      return pos;
+    }
+
+    function restorePos() {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (typeof data.left === "number" && typeof data.top === "number") {
+          applyPos(data.left, data.top);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function savePos() {
+      const left = parseFloat(btn.style.left);
+      const top = parseFloat(btn.style.top);
+      if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ left, top }));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      active = true;
+      dragged = false;
+      startTime = Date.now();
+      const rect = btn.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      originLeft = rect.left;
+      originTop = rect.top;
+      try {
+        btn.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    });
+
+    btn.addEventListener("pointermove", (e) => {
+      if (!active) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!dragged && Math.hypot(dx, dy) < THRESHOLD) return;
+      dragged = true;
+      btn.classList.add("is-dragging");
+      applyPos(originLeft + dx, originTop + dy);
+    });
+
+    function endPointer(e) {
+      if (!active) return;
+      active = false;
+      btn.classList.remove("is-dragging");
+      try {
+        if (e?.pointerId != null) btn.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+
+      const dx = (e?.clientX ?? startX) - startX;
+      const dy = (e?.clientY ?? startY) - startY;
+      const dist = Math.hypot(dx, dy);
+      const elapsed = Date.now() - startTime;
+
+      // Toque corto = no es arrastre, aunque haya temblor
+      if (elapsed < 280 && dist < 40) {
+        dragged = false;
+      }
+
+      if (dragged) {
+        applyPos(originLeft + dx, originTop + dy);
+        savePos();
+        return;
+      }
+      // Abrir aquí y también en click (por si el navegador omite uno en la zona baja)
+      openHelp();
+    }
+
+    btn.addEventListener("pointerup", endPointer);
+    btn.addEventListener("pointercancel", (e) => {
+      // Si el sistema cancela el gesto, aún intentar abrir si no hubo arrastre
+      endPointer(e);
+    });
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dragged) {
+        dragged = false;
+        return;
+      }
+      openHelp();
+    });
+
+    restorePos();
+    window.addEventListener("resize", () => {
+      if (!btn.classList.contains("ayuda-fab--moved")) return;
+      const left = parseFloat(btn.style.left);
+      const top = parseFloat(btn.style.top);
+      if (Number.isFinite(left) && Number.isFinite(top)) applyPos(left, top);
+    });
+  }
+
   function build() {
     const app = detectApp();
     const img = imageSrc();
@@ -173,7 +323,8 @@
     btn.className = "ayuda-fab";
     btn.id = "btn-ayuda-nav";
     btn.setAttribute("aria-label", "Ayuda de navegación");
-    btn.innerHTML = `<img src="${img}" alt="" width="56" height="56" />`;
+    btn.setAttribute("title", "Mantén pulsado y arrastra para mover");
+    btn.innerHTML = `<img src="${img}" alt="" width="72" height="72" />`;
 
     const dialog = document.createElement("dialog");
     dialog.className = "modal modal--ayuda";
@@ -199,10 +350,39 @@
     document.body.appendChild(btn);
     document.body.appendChild(dialog);
 
-    btn.addEventListener("click", () => {
+    const panel = dialog.querySelector(".ayuda-panel");
+
+    const scrollAyudaToTop = () => {
+      if (panel) panel.scrollTop = 0;
+      dialog.scrollTop = 0;
+    };
+
+    const openAyuda = () => {
       if (typeof dialog.showModal === "function") dialog.showModal();
       else dialog.setAttribute("open", "");
-    });
+      scrollAyudaToTop();
+      // iPhone a veces enfoca el botón de abajo y deja el scroll abajo
+      requestAnimationFrame(() => {
+        scrollAyudaToTop();
+        try {
+          dialog.focus({ preventScroll: true });
+        } catch {
+          try {
+            dialog.focus();
+          } catch {
+            /* ignore */
+          }
+        }
+        scrollAyudaToTop();
+      });
+      setTimeout(scrollAyudaToTop, 40);
+      setTimeout(scrollAyudaToTop, 120);
+    };
+
+    enableFabDrag(btn, openAyuda);
+
+    dialog.setAttribute("tabindex", "-1");
+    dialog.addEventListener("close", scrollAyudaToTop);
 
     dialog.querySelector("[data-ayuda-close]")?.addEventListener("click", () => {
       if (dialog.open) dialog.close();

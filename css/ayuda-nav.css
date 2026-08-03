@@ -3,14 +3,17 @@
   position: fixed;
   right: 0.75rem;
   bottom: calc(var(--nav-h, 96px) + env(safe-area-inset-bottom, 0px) + 0.75rem);
-  z-index: 40;
-  width: 48px;
-  height: 48px;
+  z-index: 120;
+  width: 68px;
+  height: 68px;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: 14px;
   background: transparent;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   box-shadow: 0 6px 18px rgba(0, 61, 120, 0.22);
   opacity: 0.92;
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
@@ -25,7 +28,26 @@
 }
 
 .ayuda-fab:active {
-  transform: scale(0.96);
+  cursor: grabbing;
+}
+
+.ayuda-fab.is-dragging {
+  cursor: grabbing;
+  opacity: 1;
+  z-index: 130;
+  transition: none;
+  transform: scale(1.06);
+  box-shadow: 0 12px 28px rgba(0, 61, 120, 0.35);
+}
+
+.ayuda-fab.ayuda-fab--moved:hover,
+.ayuda-fab.ayuda-fab--moved:focus-visible {
+  transform: none;
+}
+
+.ayuda-fab.is-dragging:hover,
+.ayuda-fab.is-dragging:focus-visible {
+  transform: scale(1.06);
 }
 
 .ayuda-fab img {
@@ -33,7 +55,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: 14px;
   pointer-events: none;
 }
 
@@ -50,8 +72,8 @@ body.ayuda-fab--bienestar .ayuda-fab,
 body.ayuda-fab--personero .ayuda-fab {
   bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
   right: 0.85rem;
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
 }
 
 .modal--ayuda {
@@ -61,6 +83,7 @@ body.ayuda-fab--personero .ayuda-fab {
   width: min(480px, calc(100vw - 1.25rem));
   max-height: min(85dvh, 640px);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+  overflow: hidden;
 }
 
 .modal--ayuda:not([open]) {
@@ -71,12 +94,18 @@ body.ayuda-fab--personero .ayuda-fab {
   background: rgba(15, 23, 42, 0.48);
 }
 
+.modal--ayuda:focus {
+  outline: none;
+}
+
 .ayuda-panel {
   display: grid;
   gap: 0.85rem;
   padding: 1.25rem 1.2rem 1.15rem;
   max-height: min(85dvh, 640px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ayuda-panel__head {
@@ -88,7 +117,7 @@ body.ayuda-fab--personero .ayuda-fab {
 .ayuda-panel__head img {
   width: 96px;
   height: 96px;
-  border-radius: 22px;
+  border-radius: 20px;
   object-fit: contain;
   object-position: center;
   flex-shrink: 0;
@@ -179,7 +208,7 @@ body.ayuda-fab--personero .ayuda-fab {
   body.ayuda-fab--publica .ayuda-fab {
     bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
     right: 0.85rem;
-    width: 56px;
-    height: 56px;
+    width: 72px;
+    height: 72px;
   }
 }
