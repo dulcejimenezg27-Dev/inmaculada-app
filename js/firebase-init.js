@@ -301,7 +301,7 @@ async function fetchBienestar() {
   const snap = await withTimeout(getDocs(collection(db, "bienestar")), 20000, "Carga de bienestar");
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+    .sort(compareNewestFirst);
 }
 
 async function saveBienestar(item) {
@@ -328,7 +328,7 @@ async function fetchPersonero() {
   const snap = await withTimeout(getDocs(collection(db, "personero")), 20000, "Carga de personero");
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+    .sort(compareNewestFirst);
 }
 
 async function savePersonero(item) {
@@ -526,7 +526,7 @@ function watchBienestar(callback) {
     (snap) => {
       const items = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+        .sort(compareNewestFirst);
       callback(items);
     },
     (err) => console.error(err)
@@ -545,7 +545,7 @@ function watchPersonero(callback) {
     (snap) => {
       const items = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+        .sort(compareNewestFirst);
       callback(items);
     },
     (err) => console.error(err)

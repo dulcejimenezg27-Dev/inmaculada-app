@@ -233,7 +233,7 @@
     if (!list) return;
     const items = bienestarPosts
       .filter((c) => filtroBienestar === "todos" || c.categoria === filtroBienestar)
-      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
 
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay publicaciones de bienestar en esta categoría.</div>`;
@@ -266,7 +266,7 @@
     if (!list) return;
     const items = personeroPosts
       .filter((c) => filtroPersonero === "todos" || c.categoria === filtroPersonero)
-      .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+      .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
 
     if (!items.length) {
       list.innerHTML = `<div class="empty">No hay publicaciones de personería en esta categoría.</div>`;
@@ -719,6 +719,7 @@
   fillSalonSelects();
 
   async function boot() {
+    if (C?.ensureAvatarLightbox) C.ensureAvatarLightbox();
     if (C) {
       // Agenda y respaldo estático; comunicados/honor los manda Firestore si está activo
       await C.hydrateFromFile("./data/contenido.json");
