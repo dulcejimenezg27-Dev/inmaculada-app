@@ -189,6 +189,7 @@
 
   function renderComunicados() {
     const list = document.getElementById("lista-comunicados");
+    const playing = snapshotPlayingMedia(list);
     const items = comunicados
       .filter((c) => filtro === "todos" || c.categoria === filtro)
       .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
@@ -217,6 +218,7 @@
       </article>`
       )
       .join("");
+    restorePlayingMedia(list, playing);
     if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
@@ -224,14 +226,26 @@
     if (!state) return;
     likesCounts = state.counts || {};
     likesMine = state.mine instanceof Set ? state.mine : new Set(state.mine || []);
-    if (currentHash() === "comunicados") renderComunicados();
-    if (currentHash() === "bienestar") renderBienestar();
-    if (currentHash() === "personero") renderPersonero();
+    // Actualizar botones en sitio (no re-pintar el feed: eso reinicia el video)
+    document.querySelectorAll("[data-like]").forEach((btn) => {
+      const id = btn.getAttribute("data-like");
+      if (!id) return;
+      const liked = likesMine.has(id);
+      const count = likesCounts[id] || 0;
+      btn.classList.toggle("is-liked", liked);
+      btn.setAttribute("aria-pressed", liked ? "true" : "false");
+      btn.setAttribute("aria-label", liked ? "Quitar me gusta" : "Me gusta");
+      const heartEl = btn.querySelector(".like-btn__heart");
+      const countEl = btn.querySelector(".like-btn__count");
+      if (heartEl) heartEl.textContent = liked ? "♥" : "♡";
+      if (countEl) countEl.textContent = String(count);
+    });
   }
 
   function renderBienestar() {
     const list = document.getElementById("lista-bienestar");
     if (!list) return;
+    const playing = snapshotPlayingMedia(list);
     const items = bienestarPosts
       .filter((c) => filtroBienestar === "todos" || c.categoria === filtroBienestar)
       .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
@@ -260,12 +274,14 @@
       </article>`
       )
       .join("");
+    restorePlayingMedia(list, playing);
     if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
   function renderPersonero() {
     const list = document.getElementById("lista-personero");
     if (!list) return;
+    const playing = snapshotPlayingMedia(list);
     const items = personeroPosts
       .filter((c) => filtroPersonero === "todos" || c.categoria === filtroPersonero)
       .sort(C?.compareNewestFirst || ((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
@@ -294,6 +310,7 @@
       </article>`
       )
       .join("");
+    restorePlayingMedia(list, playing);
     if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
@@ -372,7 +389,132 @@
   document.getElementById("lista-bienestar")?.addEventListener("click", handleLikeClick);
   document.getElementById("lista-personero")?.addEventListener("click", handleLikeClick);
 
-  /* Video Drive / YouTube: miniatura → reproducir (cubre el negro hasta que cargue) */
+  /* Video Drive / YouTube: miniatura → reproducir (1 toque) */
+  function snapshotPlayingMedia(listEl) {
+    const map = new Map();
+    if (!listEl) return map;
+    listEl.querySelectorAll(".media-embed.is-playing").forEach((el) => {
+      const key =
+        el.getAttribute("data-drive-id") ||
+        el.getAttribute("data-yt-src") ||
+        "";
+      if (!key) return;
+      map.set(key, {
+        html: el.innerHTML,
+        className: el.className,
+        orient: el.dataset.orient || "",
+        orientLocked: el.dataset.orientLocked || "",
+      });
+    });
+    return map;
+  }
+
+  function restorePlayingMedia(listEl, map) {
+    if (!listEl || !map?.size) return;
+    listEl.querySelectorAll(".media-embed").forEach((el) => {
+      const key =
+        el.getAttribute("data-drive-id") ||
+        el.getAttribute("data-yt-src") ||
+        "";
+      const saved = key && map.get(key);
+      if (!saved) return;
+      el.className = saved.className;
+      if (saved.orient) el.dataset.orient = saved.orient;
+      if (saved.orientLocked) el.dataset.orientLocked = saved.orientLocked;
+      el.innerHTML = saved.html;
+      const video = el.querySelector("video.media-drive-video");
+      if (video) {
+        video.play()?.catch?.(() => {});
+      }
+    });
+  }
+
+  function driveMediaUrl(fileId) {
+    const key = window.FIREBASE_CONFIG?.apiKey;
+    if (!key || !fileId) return "";
+    return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
+      fileId
+    )}?alt=media&key=${encodeURIComponent(key)}`;
+  }
+
+  function mountDriveIframe(wrap, id, posterSrc, posterAlt) {
+    wrap.innerHTML = `
+      <iframe
+        src="https://drive.google.com/file/d/${id}/preview?autoplay=1"
+        title="Video de Drive"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowfullscreen
+        loading="eager"
+        referrerpolicy="strict-origin-when-cross-origin"
+      ></iframe>
+      <div class="media-drive-cover media-drive-cover--passive" aria-hidden="true">
+        ${
+          posterSrc
+            ? `<img class="media-drive-cover__img" src="${posterSrc.replace(/"/g, "&quot;")}" alt="${String(posterAlt).replace(/"/g, "&quot;")}" referrerpolicy="no-referrer" />`
+            : ""
+        }
+      </div>
+    `;
+    const cover = wrap.querySelector(".media-drive-cover");
+    const iframe = wrap.querySelector("iframe");
+    let revealed = false;
+    const reveal = () => {
+      if (revealed || !cover) return;
+      revealed = true;
+      cover.classList.add("is-ready");
+      window.setTimeout(() => cover.remove(), 320);
+    };
+    iframe?.addEventListener("load", () => window.setTimeout(reveal, 280), { once: true });
+    window.setTimeout(reveal, 2200);
+  }
+
+  function playDriveFromPoster(wrap, id, posterSrc, posterAlt) {
+    wrap.classList.add("is-playing");
+    const mediaUrl = driveMediaUrl(id);
+
+    // Intento 1: <video> nativo (un solo toque). Si Drive API no deja, cae al iframe.
+    if (mediaUrl) {
+      wrap.innerHTML = `
+        <video
+          class="media-drive-video"
+          controls
+          playsinline
+          autoplay
+          preload="auto"
+          ${posterSrc ? `poster="${posterSrc.replace(/"/g, "&quot;")}"` : ""}
+          src="${mediaUrl.replace(/"/g, "&quot;")}"
+        ></video>
+      `;
+      const video = wrap.querySelector("video");
+      if (video) {
+        let fellBack = false;
+        const fallback = () => {
+          if (fellBack) return;
+          fellBack = true;
+          mountDriveIframe(wrap, id, posterSrc, posterAlt);
+        };
+        video.addEventListener("error", fallback, { once: true });
+        // play() en el mismo gesto del usuario → inicia al primer toque
+        const p = video.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            // Autoplay bloqueado: el control nativo sigue siendo 1 toque en ▶
+          });
+        }
+        // Si en ~2.5s no hay datos, el iframe suele ser más fiable
+        window.setTimeout(() => {
+          if (fellBack) return;
+          if (video.readyState >= 2 || video.currentTime > 0) return;
+          if (!video.paused && video.readyState >= 1) return;
+          fallback();
+        }, 2500);
+      }
+      return;
+    }
+
+    mountDriveIframe(wrap, id, posterSrc, posterAlt);
+  }
+
   document.getElementById("main")?.addEventListener("click", (e) => {
     const ytBtn = e.target.closest("[data-yt-play]");
     if (ytBtn) {
@@ -396,40 +538,7 @@
     const thumb = playBtn.querySelector(".media-drive-poster__img");
     const posterSrc = thumb?.currentSrc || thumb?.getAttribute("src") || "";
     const posterAlt = thumb?.getAttribute("alt") || "";
-
-    wrap.classList.add("is-playing");
-    wrap.innerHTML = `
-      <iframe
-        src="https://drive.google.com/file/d/${id}/preview?autoplay=1"
-        title="Video de Drive"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        allowfullscreen
-        loading="eager"
-        referrerpolicy="strict-origin-when-cross-origin"
-      ></iframe>
-      <div class="media-drive-cover" aria-hidden="true">
-        ${
-          posterSrc
-            ? `<img class="media-drive-cover__img" src="${posterSrc.replace(/"/g, "&quot;")}" alt="${String(posterAlt).replace(/"/g, "&quot;")}" referrerpolicy="no-referrer" />`
-            : ""
-        }
-        <span class="media-drive-cover__shade"></span>
-        <span class="media-drive-cover__spinner" role="status">Cargando video…</span>
-      </div>
-    `;
-
-    const iframe = wrap.querySelector("iframe");
-    const cover = wrap.querySelector(".media-drive-cover");
-    let revealed = false;
-    const reveal = () => {
-      if (revealed || !cover) return;
-      revealed = true;
-      cover.classList.add("is-ready");
-      window.setTimeout(() => cover.remove(), 420);
-    };
-    // El iframe de Drive dispara load antes de que el player pinte el primer frame
-    iframe?.addEventListener("load", () => window.setTimeout(reveal, 700), { once: true });
-    window.setTimeout(reveal, 3500);
+    playDriveFromPoster(wrap, id, posterSrc, posterAlt);
   });
 
   /* Orientación: cuando carga la miniatura (caché o red) */
