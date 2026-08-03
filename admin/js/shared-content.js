@@ -156,19 +156,37 @@ window.InmaculadaContent = (() => {
     }
   }
 
-  function youtubeEmbedUrl(url) {
+  function youtubeVideoId(url) {
     if (!url) return "";
     const s = String(url).trim();
-    let id = "";
     const watch = s.match(/[?&]v=([^&]+)/);
     const short = s.match(/youtu\.be\/([^?&]+)/);
     const embed = s.match(/youtube\.com\/embed\/([^?&]+)/);
     const shorts = s.match(/youtube\.com\/shorts\/([^?&]+)/);
-    if (watch) id = watch[1];
-    else if (short) id = short[1];
-    else if (embed) id = embed[1];
-    else if (shorts) id = shorts[1];
+    if (watch) return watch[1];
+    if (short) return short[1];
+    if (embed) return embed[1];
+    if (shorts) return shorts[1];
+    return "";
+  }
+
+  function isYoutubeShorts(url) {
+    return /youtube\.com\/shorts\//i.test(String(url || ""));
+  }
+
+  function youtubeEmbedUrl(url) {
+    const id = youtubeVideoId(url);
     return id ? `https://www.youtube.com/embed/${id}` : "";
+  }
+
+  function youtubeThumbCandidates(id) {
+    const vid = String(id || "").trim();
+    if (!vid) return [];
+    return [
+      `https://i.ytimg.com/vi/${encodeURIComponent(vid)}/hq720.jpg`,
+      `https://i.ytimg.com/vi/${encodeURIComponent(vid)}/sddefault.jpg`,
+      `https://i.ytimg.com/vi/${encodeURIComponent(vid)}/hqdefault.jpg`,
+    ];
   }
 
   function drivePreviewUrl(url) {
@@ -181,10 +199,64 @@ window.InmaculadaContent = (() => {
     const id = extractDriveId(idOrUrl) || String(idOrUrl || "").trim();
     if (!id) return [];
     return [
-      `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1280`,
       `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1280`,
+      `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1000`,
+      `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1280`,
       `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1000`,
     ];
+  }
+
+  /** Clasifica orientación a partir del tamaño natural de la miniatura. */
+  function orientationFromSize(w, h) {
+    const width = Number(w) || 0;
+    const height = Number(h) || 0;
+    if (!width || !height) return "landscape";
+    const ratio = width / height;
+    if (ratio < 0.88) return "portrait";
+    if (ratio > 1.12) return "landscape";
+    return "square";
+  }
+
+  function setMediaOrientation(wrap, orientation) {
+    if (!wrap) return;
+    const orient = orientation || "landscape";
+    wrap.classList.remove(
+      "media-embed--portrait",
+      "media-embed--landscape",
+      "media-embed--square"
+    );
+    wrap.classList.add(`media-embed--${orient}`);
+    wrap.dataset.orient = orient;
+  }
+
+  function applyOrientationFromImg(img) {
+    if (!(img instanceof HTMLImageElement)) return;
+    const wrap = img.closest(".media-embed");
+    if (!wrap || wrap.dataset.orientLocked === "1") return;
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    setMediaOrientation(wrap, orientationFromSize(img.naturalWidth, img.naturalHeight));
+  }
+
+  /** Tras pintar el feed: ajusta horizontal / vertical / cuadrado. */
+  function applyMediaOrientation(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll(".media-embed[data-orient='auto']").forEach((wrap) => {
+      if (wrap.dataset.orientHint === "portrait") {
+        setMediaOrientation(wrap, "portrait");
+        wrap.dataset.orientLocked = "1";
+        return;
+      }
+      const img = wrap.querySelector(
+        ".media-drive-poster__img, .media-yt-poster__img"
+      );
+      if (!img) {
+        setMediaOrientation(wrap, "landscape");
+        return;
+      }
+      const run = () => applyOrientationFromImg(img);
+      if (img.complete && img.naturalWidth) run();
+      else img.addEventListener("load", run, { once: true });
+    });
   }
 
   function driveImageUrl(url) {
@@ -355,10 +427,27 @@ window.InmaculadaContent = (() => {
 
   function mediaHtml(comunicado) {
     const parts = [];
-    const yt = youtubeEmbedUrl(comunicado.videoYoutube || "");
-    if (yt) {
+    const ytRaw = comunicado.videoYoutube || "";
+    const ytId = youtubeVideoId(ytRaw);
+    const yt = ytId ? `https://www.youtube.com/embed/${ytId}` : "";
+    if (yt && ytId) {
+      const shorts = isYoutubeShorts(ytRaw);
+      const thumbs = youtubeThumbCandidates(ytId);
+      const [first, ...rest] = thumbs;
+      const img = first
+        ? `<img class="media-yt-poster__img" src="${escapeAttr(first)}" alt="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" decoding="async" ${imgFallbackOnErrorAttr(rest)} />`
+        : "";
       parts.push(
-        `<div class="media-embed media-embed--youtube"><iframe src="${escapeAttr(yt)}" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
+        `<div class="media-embed media-embed--youtube${shorts ? " media-embed--portrait" : " media-embed--landscape"}" data-orient="${shorts ? "portrait" : "auto"}"${shorts ? ' data-orient-hint="portrait" data-orient-locked="1"' : ""} data-yt-src="${escapeAttr(yt)}">
+          <button type="button" class="media-drive-poster" data-yt-play aria-label="Reproducir video de YouTube">
+            ${img}
+            <span class="media-drive-poster__shade" aria-hidden="true"></span>
+            <span class="media-drive-poster__play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
+            </span>
+            <span class="media-drive-poster__label">YouTube · Toca para ver</span>
+          </button>
+        </div>`
       );
     }
     const driveVidId = extractDriveId(comunicado.videoDrive || "");
@@ -370,7 +459,7 @@ window.InmaculadaContent = (() => {
           ? `<img class="media-drive-poster__img" src="${escapeAttr(first)}" alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async" ${imgFallbackOnErrorAttr(rest)} />`
           : "";
       parts.push(
-        `<div class="media-embed media-embed--drive" data-drive-id="${escapeAttr(driveVidId)}">
+        `<div class="media-embed media-embed--drive media-embed--landscape" data-orient="auto" data-drive-id="${escapeAttr(driveVidId)}">
           <button type="button" class="media-drive-poster" data-drive-play aria-label="Reproducir video de Drive">
             ${img}
             <span class="media-drive-poster__shade" aria-hidden="true"></span>
@@ -542,6 +631,9 @@ window.InmaculadaContent = (() => {
     save,
     uid,
     youtubeEmbedUrl,
+    youtubeVideoId,
+    isYoutubeShorts,
+    youtubeThumbCandidates,
     drivePreviewUrl,
     driveVideoThumbCandidates,
     driveImageUrl,
@@ -555,6 +647,9 @@ window.InmaculadaContent = (() => {
     autorAvatarHtml,
     autorMetaHtml,
     mediaHtml,
+    applyMediaOrientation,
+    setMediaOrientation,
+    orientationFromSize,
     extractDriveId,
     getBundle,
     applyBundle,

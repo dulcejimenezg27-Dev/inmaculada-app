@@ -1746,6 +1746,26 @@ body.has-install-bar .topbar {
   overflow: hidden;
   background: #0f172a;
   border: 1px solid var(--line);
+  transition: aspect-ratio 0.25s ease, width 0.25s ease;
+}
+
+.media-embed--landscape {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.media-embed--square {
+  width: min(100%, 26rem);
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+}
+
+.media-embed--portrait {
+  width: min(100%, 20.5rem);
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
+  height: auto;
+  max-height: min(72vh, 34rem);
 }
 
 .media-embed iframe {
@@ -1754,6 +1774,21 @@ body.has-install-bar .topbar {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.media-yt-poster__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.media-embed--portrait .media-drive-poster__img,
+.media-embed--portrait .media-yt-poster__img,
+.media-embed--portrait .media-drive-cover__img {
+  object-fit: cover;
 }
 
 /* Drive: miniatura tipo YouTube + reproducir al tocar */
@@ -1766,9 +1801,7 @@ body.has-install-bar .topbar {
   padding: 0;
   border: 0;
   cursor: pointer;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(0, 85, 164, 0.35), transparent 55%),
-    linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%);
+  background: #1a2332;
   color: #fff;
 }
 
@@ -1784,7 +1817,7 @@ body.has-install-bar .topbar {
 .media-drive-poster__shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.55) 100%);
+  background: linear-gradient(180deg, transparent 35%, rgba(15, 23, 42, 0.45) 100%);
   pointer-events: none;
 }
 
@@ -1823,12 +1856,61 @@ body.has-install-bar .topbar {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
+.media-embed--drive.is-playing {
+  background: #0b1220;
+}
+
 .media-embed--drive.is-playing iframe {
-  /* Recorta barras/chrome típicos del preview de Drive */
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 165%;
-  top: -32%;
-  left: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+/* Cubre el flash negro del player de Drive hasta que esté listo */
+.media-drive-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.media-drive-cover.is-ready {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.media-drive-cover__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-drive-cover__shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+  pointer-events: none;
+}
+
+.media-drive-cover__spinner {
+  position: relative;
+  z-index: 1;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
 }
 
 .media-image {

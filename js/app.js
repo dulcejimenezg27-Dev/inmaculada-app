@@ -217,6 +217,7 @@
       </article>`
       )
       .join("");
+    if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
   function applyLikesState(state) {
@@ -259,6 +260,7 @@
       </article>`
       )
       .join("");
+    if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
   function renderPersonero() {
@@ -292,6 +294,7 @@
       </article>`
       )
       .join("");
+    if (C?.applyMediaOrientation) C.applyMediaOrientation(list);
   }
 
   document.querySelectorAll("[data-filter-bienestar]").forEach((btn) => {
@@ -369,17 +372,96 @@
   document.getElementById("lista-bienestar")?.addEventListener("click", handleLikeClick);
   document.getElementById("lista-personero")?.addEventListener("click", handleLikeClick);
 
-  /* Video Drive: miniatura → reproducir al tocar */
+  /* Video Drive / YouTube: miniatura → reproducir (cubre el negro hasta que cargue) */
   document.getElementById("main")?.addEventListener("click", (e) => {
+    const ytBtn = e.target.closest("[data-yt-play]");
+    if (ytBtn) {
+      e.preventDefault();
+      const wrap = ytBtn.closest(".media-embed--youtube");
+      const src = wrap?.getAttribute("data-yt-src");
+      if (!wrap || !src || wrap.classList.contains("is-playing")) return;
+      const sep = src.includes("?") ? "&" : "?";
+      wrap.classList.add("is-playing");
+      wrap.innerHTML = `<iframe src="${src}${sep}autoplay=1&rel=0&modestbranding=1" title="Video de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+      return;
+    }
+
     const playBtn = e.target.closest("[data-drive-play]");
     if (!playBtn) return;
     e.preventDefault();
     const wrap = playBtn.closest(".media-embed--drive");
     const id = wrap?.getAttribute("data-drive-id");
     if (!wrap || !id || wrap.classList.contains("is-playing")) return;
+
+    const thumb = playBtn.querySelector(".media-drive-poster__img");
+    const posterSrc = thumb?.currentSrc || thumb?.getAttribute("src") || "";
+    const posterAlt = thumb?.getAttribute("alt") || "";
+
     wrap.classList.add("is-playing");
-    wrap.innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview" title="Video de Drive" allow="autoplay; encrypted-media" allowfullscreen loading="eager"></iframe>`;
+    wrap.innerHTML = `
+      <iframe
+        src="https://drive.google.com/file/d/${id}/preview?autoplay=1"
+        title="Video de Drive"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowfullscreen
+        loading="eager"
+        referrerpolicy="strict-origin-when-cross-origin"
+      ></iframe>
+      <div class="media-drive-cover" aria-hidden="true">
+        ${
+          posterSrc
+            ? `<img class="media-drive-cover__img" src="${posterSrc.replace(/"/g, "&quot;")}" alt="${String(posterAlt).replace(/"/g, "&quot;")}" referrerpolicy="no-referrer" />`
+            : ""
+        }
+        <span class="media-drive-cover__shade"></span>
+        <span class="media-drive-cover__spinner" role="status">Cargando video…</span>
+      </div>
+    `;
+
+    const iframe = wrap.querySelector("iframe");
+    const cover = wrap.querySelector(".media-drive-cover");
+    let revealed = false;
+    const reveal = () => {
+      if (revealed || !cover) return;
+      revealed = true;
+      cover.classList.add("is-ready");
+      window.setTimeout(() => cover.remove(), 420);
+    };
+    // El iframe de Drive dispara load antes de que el player pinte el primer frame
+    iframe?.addEventListener("load", () => window.setTimeout(reveal, 700), { once: true });
+    window.setTimeout(reveal, 3500);
   });
+
+  /* Orientación: cuando carga la miniatura (caché o red) */
+  document.getElementById("main")?.addEventListener(
+    "load",
+    (e) => {
+      const img = e.target;
+      if (!(img instanceof HTMLImageElement)) return;
+      if (!img.matches(".media-drive-poster__img, .media-yt-poster__img")) return;
+      const wrap = img.closest(".media-embed");
+      if (!wrap || wrap.dataset.orientLocked === "1") return;
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      const orient =
+        C?.orientationFromSize?.(img.naturalWidth, img.naturalHeight) ||
+        (img.naturalWidth / img.naturalHeight < 0.88
+          ? "portrait"
+          : img.naturalWidth / img.naturalHeight > 1.12
+            ? "landscape"
+            : "square");
+      if (C?.setMediaOrientation) C.setMediaOrientation(wrap, orient);
+      else {
+        wrap.classList.remove(
+          "media-embed--portrait",
+          "media-embed--landscape",
+          "media-embed--square"
+        );
+        wrap.classList.add(`media-embed--${orient}`);
+        wrap.dataset.orient = orient;
+      }
+    },
+    true
+  );
 
   document.querySelector("#comunicados .filters")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-filter]");
