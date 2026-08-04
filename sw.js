@@ -1,5 +1,5 @@
 /* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v57";
+const CACHE_NAME = "inmaculada-v58";
 const ASSETS = [
   "./index.html",
   "./css/styles.css",

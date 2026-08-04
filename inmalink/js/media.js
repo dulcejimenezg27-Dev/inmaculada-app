@@ -104,7 +104,7 @@ window.InmaLinkMedia = (() => {
           <button type="button" class="il-drive-poster" data-drive-play aria-label="Reproducir video">
             ${img}
             <span class="il-drive-poster__play" aria-hidden="true">▶</span>
-            <span class="il-drive-poster__label">Drive · Toca para ver</span>
+            <span class="il-drive-poster__label">Drive · Toca para reproducir</span>
           </button>
         </div>`
       );

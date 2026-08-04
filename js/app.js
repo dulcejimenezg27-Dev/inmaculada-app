@@ -442,126 +442,91 @@
     )}?alt=media&key=${encodeURIComponent(key)}`;
   }
 
-  function drivePosterButtonHtml(id, posterSrc, posterAlt) {
+  function driveFailHtml(id, posterSrc, posterAlt) {
     const img = posterSrc
       ? `<img class="media-drive-poster__img" src="${String(posterSrc).replace(/"/g, "&quot;")}" alt="${String(posterAlt || "").replace(/"/g, "&quot;")}" loading="lazy" referrerpolicy="no-referrer" decoding="async" />`
       : "";
+    const viewUrl = `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
     return `
-      <button type="button" class="media-drive-poster" data-drive-play aria-label="Reproducir video de Drive">
+      <div class="media-drive-fail">
         ${img}
-        <span class="media-drive-poster__shade" aria-hidden="true"></span>
-        <span class="media-drive-poster__play" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
-        </span>
-        <span class="media-drive-poster__label">Video de Drive · Toca para ver</span>
-      </button>
-    `;
-  }
-
-  function ensureDrivePlayerModal() {
-    let dialog = document.getElementById("modal-drive-player");
-    if (dialog) return dialog;
-    dialog = document.createElement("dialog");
-    dialog.id = "modal-drive-player";
-    dialog.className = "modal modal--drive-player";
-    dialog.innerHTML = `
-      <div class="drive-player-panel">
-        <header class="drive-player-panel__head">
-          <strong>Video de Drive</strong>
-          <button type="button" class="drive-player-panel__close" data-drive-player-close aria-label="Cerrar">×</button>
-        </header>
-        <div class="drive-player-panel__frame" id="drive-player-frame"></div>
+        <p class="media-drive-fail__msg">No se pudo reproducir aquí</p>
+        <div class="media-drive-fail__actions">
+          <button type="button" class="btn btn--primary" data-drive-play>Reintentar</button>
+          <a class="btn btn--ghost" href="${viewUrl}" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>
+        </div>
       </div>
     `;
-    document.body.appendChild(dialog);
-    const close = () => {
-      const frame = dialog.querySelector("#drive-player-frame");
-      if (frame) frame.innerHTML = "";
-      if (dialog.open) dialog.close();
-      else dialog.removeAttribute("open");
-    };
-    dialog.addEventListener("click", (e) => {
-      if (e.target === dialog || e.target.closest("[data-drive-player-close]")) {
-        e.preventDefault();
-        close();
-      }
-    });
-    dialog.addEventListener("cancel", (e) => {
-      e.preventDefault();
-      close();
-    });
-    return dialog;
   }
 
-  function openDrivePlayerModal(id) {
-    const dialog = ensureDrivePlayerModal();
-    const frame = dialog.querySelector("#drive-player-frame");
-    if (!frame || !id) return;
-    frame.innerHTML = `
-      <iframe
-        src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview"
-        title="Video de Drive"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        allowfullscreen
-        loading="eager"
-        referrerpolicy="strict-origin-when-cross-origin"
-      ></iframe>
-    `;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-  }
-
-  function mountDriveIframe(wrap, id, posterSrc, posterAlt) {
-    // El iframe de Drive en el recuadro del feed tapa el video con controles enormes.
-    // Lo abrimos en un modal grande y dejamos la miniatura limpia en el aviso.
-    wrap.classList.remove("is-playing");
-    wrap.innerHTML = drivePosterButtonHtml(id, posterSrc, posterAlt);
-    openDrivePlayerModal(id);
+  function driveCandidateUrls(id) {
+    const urls = [];
+    const mediaUrl = driveMediaUrl(id);
+    if (mediaUrl) urls.push(mediaUrl);
+    urls.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
+    urls.push(`https://docs.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
+    return urls;
   }
 
   function playDriveFromPoster(wrap, id, posterSrc, posterAlt) {
-    const mediaUrl = driveMediaUrl(id);
-
-    // Intento 1: <video> nativo en el feed (controles limpios). Si falla → modal con iframe.
-    if (mediaUrl) {
-      wrap.classList.add("is-playing");
-      wrap.innerHTML = `
-        <video
-          class="media-drive-video"
-          controls
-          playsinline
-          autoplay
-          preload="auto"
-          ${posterSrc ? `poster="${posterSrc.replace(/"/g, "&quot;")}"` : ""}
-          src="${mediaUrl.replace(/"/g, "&quot;")}"
-        ></video>
-      `;
-      const video = wrap.querySelector("video");
-      if (video) {
-        let fellBack = false;
-        const fallback = () => {
-          if (fellBack) return;
-          fellBack = true;
-          mountDriveIframe(wrap, id, posterSrc, posterAlt);
-        };
-        video.addEventListener("error", fallback, { once: true });
-        const p = video.play();
-        if (p && typeof p.catch === "function") {
-          p.catch(() => {
-            /* el usuario puede pulsar ▶ nativo */
-          });
-        }
-        window.setTimeout(() => {
-          if (fellBack) return;
-          if (video.readyState >= 2 || video.currentTime > 0) return;
-          if (!video.paused && video.readyState >= 1) return;
-          fallback();
-        }, 4000);
-      }
+    const candidates = driveCandidateUrls(id);
+    if (!candidates.length) {
+      wrap.classList.remove("is-playing");
+      wrap.innerHTML = driveFailHtml(id, posterSrc, posterAlt);
       return;
     }
 
-    mountDriveIframe(wrap, id, posterSrc, posterAlt);
+    // Siempre en la miniatura con controles nativos (se ocultan solos).
+    // No usamos el iframe de Drive: tapa el video y obliga a un segundo play.
+    wrap.classList.add("is-playing");
+    const posterAttr = posterSrc
+      ? `poster="${String(posterSrc).replace(/"/g, "&quot;")}"`
+      : "";
+    wrap.innerHTML = `
+      <video
+        class="media-drive-video"
+        controls
+        playsinline
+        webkit-playsinline
+        preload="metadata"
+        ${posterAttr}
+      ></video>
+    `;
+    const video = wrap.querySelector("video");
+    if (!video) return;
+
+    let idx = 0;
+    let settled = false;
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      wrap.classList.remove("is-playing");
+      wrap.innerHTML = driveFailHtml(id, posterSrc, posterAlt);
+    };
+    const tryNext = () => {
+      if (idx >= candidates.length) {
+        fail();
+        return;
+      }
+      video.src = candidates[idx++];
+      video.load();
+      const p = video.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          /* Controles nativos: el usuario puede pulsar ▶ */
+        });
+      }
+    };
+
+    video.addEventListener("error", () => tryNext());
+    video.addEventListener(
+      "loadeddata",
+      () => {
+        settled = true;
+      },
+      { once: true }
+    );
+    tryNext();
   }
 
   document.getElementById("main")?.addEventListener("click", (e) => {
@@ -572,7 +537,7 @@
     const id = wrap?.getAttribute("data-drive-id");
     if (!wrap || !id || wrap.classList.contains("is-playing")) return;
 
-    const thumb = playBtn.querySelector(".media-drive-poster__img");
+    const thumb = wrap.querySelector(".media-drive-poster__img, .media-drive-fail img");
     const posterSrc = thumb?.currentSrc || thumb?.getAttribute("src") || "";
     const posterAlt = thumb?.getAttribute("alt") || "";
     playDriveFromPoster(wrap, id, posterSrc, posterAlt);

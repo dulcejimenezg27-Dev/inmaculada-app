@@ -1674,7 +1674,7 @@
       });
     });
 
-    /* Drive play: video nativo en el feed; iframe en modal grande */
+    /* Drive: reproducir en la miniatura con <video> nativo (como YouTube) */
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-drive-play]");
       if (!btn) return;
@@ -1684,97 +1684,91 @@
       if (!wrap || !id) return;
       if (wrap.classList.contains("is-playing") && wrap.querySelector("video")) return;
 
-      const thumb = btn.querySelector(".il-drive-poster__img");
+      const thumb = wrap.querySelector(".il-drive-poster__img, .il-drive-fail img");
       const posterSrc = thumb?.currentSrc || thumb?.getAttribute("src") || "";
       playInmaDrive(wrap, id, posterSrc);
     });
   }
 
-  function ensureIlDriveModal() {
-    let dialog = document.getElementById("il-modal-drive-player");
-    if (dialog) return dialog;
-    dialog = document.createElement("dialog");
-    dialog.id = "il-modal-drive-player";
-    dialog.className = "il-modal il-modal--drive-player";
-    dialog.innerHTML = `
-      <div class="il-drive-player">
-        <header class="il-drive-player__head">
-          <strong>Video de Drive</strong>
-          <button type="button" class="il-drive-player__close" data-il-drive-close aria-label="Cerrar">×</button>
-        </header>
-        <div class="il-drive-player__frame" id="il-drive-player-frame"></div>
-      </div>
-    `;
-    document.body.appendChild(dialog);
-    const close = () => {
-      const frame = dialog.querySelector("#il-drive-player-frame");
-      if (frame) frame.innerHTML = "";
-      if (dialog.open) dialog.close();
-      else dialog.removeAttribute("open");
-    };
-    dialog.addEventListener("click", (e) => {
-      if (e.target === dialog || e.target.closest("[data-il-drive-close]")) {
-        e.preventDefault();
-        close();
-      }
-    });
-    return dialog;
-  }
-
-  function openIlDriveModal(id) {
-    const dialog = ensureIlDriveModal();
-    const frame = dialog.querySelector("#il-drive-player-frame");
-    if (!frame || !id) return;
-    frame.innerHTML = `<iframe src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview" title="Video Drive" allow="autoplay; encrypted-media; fullscreen" allowfullscreen loading="eager"></iframe>`;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-  }
-
-  function ilDrivePosterHtml(id, posterSrc) {
+  function ilDriveFailHtml(id, posterSrc) {
     const img = posterSrc
       ? `<img class="il-drive-poster__img" src="${String(posterSrc).replace(/"/g, "&quot;")}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
       : "";
+    const viewUrl = `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
     return `
-      <button type="button" class="il-drive-poster" data-drive-play aria-label="Reproducir video">
+      <div class="il-drive-fail">
         ${img}
-        <span class="il-drive-poster__play" aria-hidden="true">▶</span>
-        <span class="il-drive-poster__label">Drive · Toca para ver</span>
-      </button>
+        <p class="il-drive-fail__msg">No se pudo reproducir aquí</p>
+        <div class="il-drive-fail__actions">
+          <button type="button" class="btn btn--primary" data-drive-play>Reintentar</button>
+          <a class="btn btn--ghost" href="${viewUrl}" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>
+        </div>
+      </div>
     `;
   }
 
-  function playInmaDrive(wrap, id, posterSrc) {
+  function ilDriveCandidateUrls(id) {
+    const urls = [];
     const key = window.INMALINK_FIREBASE_CONFIG?.apiKey || "";
-    const mediaUrl = key
-      ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(key)}`
-      : "";
+    if (key) {
+      urls.push(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(key)}`
+      );
+    }
+    urls.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
+    urls.push(`https://docs.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
+    return urls;
+  }
 
-    if (mediaUrl) {
-      wrap.classList.add("is-playing");
-      wrap.innerHTML = `<video class="il-drive-video" controls autoplay playsinline preload="auto" ${posterSrc ? `poster="${String(posterSrc).replace(/"/g, "&quot;")}"` : ""} src="${mediaUrl}"></video>`;
-      const video = wrap.querySelector("video");
-      if (!video) return;
-      let fellBack = false;
-      const fallback = () => {
-        if (fellBack) return;
-        fellBack = true;
-        wrap.classList.remove("is-playing");
-        wrap.innerHTML = ilDrivePosterHtml(id, posterSrc);
-        openIlDriveModal(id);
-      };
-      video.addEventListener("error", fallback, { once: true });
-      video.play?.()?.catch?.(() => {});
-      window.setTimeout(() => {
-        if (fellBack) return;
-        if (video.readyState >= 2 || video.currentTime > 0) return;
-        if (!video.paused && video.readyState >= 1) return;
-        fallback();
-      }, 4000);
+  function playInmaDrive(wrap, id, posterSrc) {
+    const candidates = ilDriveCandidateUrls(id);
+    if (!candidates.length) {
+      wrap.classList.remove("is-playing");
+      wrap.innerHTML = ilDriveFailHtml(id, posterSrc);
       return;
     }
 
-    wrap.classList.remove("is-playing");
-    openIlDriveModal(id);
+    wrap.classList.add("is-playing");
+    const posterAttr = posterSrc
+      ? `poster="${String(posterSrc).replace(/"/g, "&quot;")}"`
+      : "";
+    wrap.innerHTML = `<video class="il-drive-video" controls playsinline webkit-playsinline preload="metadata" ${posterAttr}></video>`;
+    const video = wrap.querySelector("video");
+    if (!video) return;
+
+    let idx = 0;
+    let settled = false;
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      wrap.classList.remove("is-playing");
+      wrap.innerHTML = ilDriveFailHtml(id, posterSrc);
+    };
+    const tryNext = () => {
+      if (idx >= candidates.length) {
+        fail();
+        return;
+      }
+      const url = candidates[idx++];
+      video.src = url;
+      video.load();
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          /* Controles nativos: el usuario puede pulsar ▶ */
+        });
+      }
+    };
+
+    video.addEventListener("error", () => tryNext());
+    video.addEventListener(
+      "loadeddata",
+      () => {
+        settled = true;
+      },
+      { once: true }
+    );
+    tryNext();
   }
 
   async function boot() {
