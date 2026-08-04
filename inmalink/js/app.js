@@ -83,6 +83,15 @@
     return String(str || "").trim().split(/\s+/).filter(Boolean)[0] || "";
   }
 
+  /** Evita que "7-B" se parta dejando la B sola */
+  function glueGrade(str) {
+    return String(str || "").replace(/(Transición|[0-9]{1,2})-([AB]\b)/gi, "$1\u2011$2");
+  }
+
+  function displayAutorLabel(label) {
+    return glueGrade(label);
+  }
+
   function postAutorGrado(perfilData, hijoIndex = 0) {
     if (!perfilData) return "";
     if (perfilData.rol === "estudiante") return String(perfilData.grado || "").trim();
@@ -217,7 +226,7 @@
               uid: c.autorUid || "",
             })}
             <div class="il-comment__meta">
-              <strong class="il-comment__author">${esc(label)}</strong>
+                <strong class="il-comment__author">${esc(displayAutorLabel(label))}</strong>
               <time>${esc(formatFecha(c.updatedAt || c.createdAt))}${c.updatedAt && c.updatedAt !== c.createdAt ? " · editado" : ""}</time>
             </div>
           </div>
@@ -472,7 +481,7 @@
     const nombre = [nom, ape].filter(Boolean).join(" ");
     switch (p.rol) {
       case "estudiante":
-        return `Estudiante · ${nombre} · ${p.grado || ""}`.trim();
+        return glueGrade(`Estudiante · ${nombre} · ${p.grado || ""}`.trim());
       case "docente":
         return `Docente · ${nombre} · ${p.areaPrincipal || (p.materias && p.materias[0]) || ""}`.trim();
       case "padre": {
@@ -484,7 +493,7 @@
           hijos.find((h) => h?.nombre) ||
           {};
         const hijoNom = String(hijo.nombre || "").trim() || "su hijo(a)";
-        const hijoGrado = String(hijo.grado || "").trim();
+        const hijoGrado = glueGrade(String(hijo.grado || "").trim());
         return `${nombre} · ${parentesco} de ${hijoNom}${hijoGrado ? ` · ${hijoGrado}` : ""}`;
       }
       case "directivo":
@@ -754,15 +763,19 @@
               uid: p.autorUid || "",
             })}
             <div>
-              <strong class="il-post__author">${esc(p.autorLabel || "Usuario")}</strong>
+              <strong class="il-post__author">${esc(displayAutorLabel(p.autorLabel || "Usuario"))}</strong>
               <time class="il-post__date">${esc(formatFecha(p.createdAt))}</time>
             </div>
           </div>
           ${
             mine
               ? `<div class="il-post__owner">
-            <button type="button" class="btn btn--ghost btn--sm" data-edit-post="${esc(p.id)}">Editar</button>
-            <button type="button" class="btn btn--ghost btn--sm" data-delete-post="${esc(p.id)}">Eliminar</button>
+            <button type="button" class="il-icon-btn" data-edit-post="${esc(p.id)}" aria-label="Editar publicación" title="Editar">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.2 6.3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="il-icon-btn il-icon-btn--danger" data-delete-post="${esc(p.id)}" aria-label="Eliminar publicación" title="Eliminar">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
           </div>`
               : ""
           }
