@@ -225,14 +225,23 @@ async function toggleDislike(postId) {
   return !disliked;
 }
 
-async function addComentario(postId, texto, autorLabel, autorUid) {
+async function addComentario(postId, texto, meta = {}) {
   await initPromise;
   if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const autorUid = meta.autorUid || auth.currentUser.uid;
   const ref = collection(db, "posts", postId, "comentarios");
   await addDoc(ref, sanitize({
     texto: String(texto || "").trim(),
-    autorLabel,
+    autorLabel: String(meta.autorLabel || "Usuario").trim(),
     autorUid,
+    autorRol: String(meta.autorRol || "").trim(),
+    autorGrado: String(meta.autorGrado || "").trim(),
+    autorNombre: String(meta.autorNombre || "").trim(),
+    autorApellidos: String(meta.autorApellidos || "").trim(),
+    likesCount: 0,
+    likedBy: [],
+    dislikesCount: 0,
+    dislikedBy: [],
     createdAt: new Date().toISOString(),
   }));
   await updateDoc(doc(db, "posts", postId), {
@@ -241,11 +250,59 @@ async function addComentario(postId, texto, autorLabel, autorUid) {
   });
 }
 
+async function toggleCommentLike(postId, commentId) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const ref = doc(db, "posts", postId, "comentarios", commentId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Comentario no encontrado");
+  const data = snap.data();
+  const likedBy = Array.isArray(data.likedBy) ? data.likedBy : [];
+  const dislikedBy = Array.isArray(data.dislikedBy) ? data.dislikedBy : [];
+  const liked = likedBy.includes(uid);
+  const disliked = dislikedBy.includes(uid);
+  const patch = {
+    likedBy: liked ? arrayRemove(uid) : arrayUnion(uid),
+    likesCount: increment(liked ? -1 : 1),
+  };
+  if (!liked && disliked) {
+    patch.dislikedBy = arrayRemove(uid);
+    patch.dislikesCount = increment(-1);
+  }
+  await updateDoc(ref, patch);
+  return !liked;
+}
+
+async function toggleCommentDislike(postId, commentId) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const ref = doc(db, "posts", postId, "comentarios", commentId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Comentario no encontrado");
+  const data = snap.data();
+  const likedBy = Array.isArray(data.likedBy) ? data.likedBy : [];
+  const dislikedBy = Array.isArray(data.dislikedBy) ? data.dislikedBy : [];
+  const liked = likedBy.includes(uid);
+  const disliked = dislikedBy.includes(uid);
+  const patch = {
+    dislikedBy: disliked ? arrayRemove(uid) : arrayUnion(uid),
+    dislikesCount: increment(disliked ? -1 : 1),
+  };
+  if (!disliked && liked) {
+    patch.likedBy = arrayRemove(uid);
+    patch.likesCount = increment(-1);
+  }
+  await updateDoc(ref, patch);
+  return !disliked;
+}
+
 function watchComentarios(postId, callback) {
   if (!db || !postId) return () => {};
   const q = query(
     collection(db, "posts", postId, "comentarios"),
-    orderBy("createdAt", "asc"),
+    orderBy("createdAt", "desc"),
     limit(100)
   );
   return onSnapshot(
@@ -290,6 +347,8 @@ window.InmaLinkFirebase = {
   toggleLike,
   toggleDislike,
   addComentario,
+  toggleCommentLike,
+  toggleCommentDislike,
   watchComentarios,
   deleteOwnPost,
   serverTimestamp,

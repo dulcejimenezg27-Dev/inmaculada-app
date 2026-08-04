@@ -1,5 +1,5 @@
 /* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v51";
+const CACHE_NAME = "inmaculada-v53";
 const ASSETS = [
   "./index.html",
   "./css/styles.css",
@@ -16,6 +16,8 @@ const ASSETS = [
   "./image/icon-192.png",
   "./image/icon-512.png",
   "./image/ayudas.jpeg",
+  "./image/InmaLinkLogo.png",
+  "./image/InmaLinkLogo-fab.png",
 ];
 
 self.addEventListener("install", (event) => {

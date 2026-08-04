@@ -64,7 +64,11 @@ service cloud.firestore {
           && request.resource.data.texto.size() > 0
           && request.resource.data.texto.size() <= 500;
 
-        allow update: if false;
+        allow update: if signedIn()
+          && request.resource.data.autorUid == resource.data.autorUid
+          && request.resource.data.texto == resource.data.texto
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['likedBy', 'likesCount', 'dislikedBy', 'dislikesCount']);
         allow delete: if signedIn() && resource.data.autorUid == request.auth.uid;
       }
     }

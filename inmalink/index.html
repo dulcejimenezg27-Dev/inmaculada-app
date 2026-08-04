@@ -31,6 +31,14 @@
       <p class="il-login__eyebrow">Colegio La Inmaculada</p>
       <h1>InmaLink</h1>
       <p class="il-login__lead">La red de la comunidad educativa: publica, comenta y comparte.</p>
+      <aside class="il-rules" role="note">
+        <strong>Uso responsable</strong>
+        <p>
+          InmaLink es un espacio del colegio. El mal uso (insultos, acoso, contenido inapropiado,
+          fake news o faltas al respeto) puede ocasionar el
+          <strong>bloqueo definitivo</strong> de la cuenta, sin posibilidad de recuperar el acceso.
+        </p>
+      </aside>
       <button type="button" class="btn btn--google" id="btn-google">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continuar con Google
@@ -42,63 +50,160 @@
 
   <!-- ONBOARDING -->
   <section class="il-screen il-onboarding" data-screen="onboarding" hidden>
-    <div class="il-panel">
-      <h1>Completa tu perfil</h1>
-      <p class="il-lead">Así te identificarán en tus publicaciones.</p>
-      <form id="form-onboarding" class="il-form">
-        <label>
-          Nombres
-          <input type="text" id="perfil-nombres" required maxlength="80" autocomplete="given-name" placeholder="Ana María" />
-        </label>
-        <label>
-          Apellidos
-          <input type="text" id="perfil-apellidos" required maxlength="80" autocomplete="family-name" placeholder="Pérez Gómez" />
-        </label>
+    <div class="ob">
+      <div class="ob__glow" aria-hidden="true"></div>
+      <header class="ob__header">
+        <img src="/image/logoInmaculada.jpg" alt="" class="ob__logo" width="48" height="48" />
+        <div>
+          <p class="ob__eyebrow">InmaLink</p>
+          <h1>Tu perfil en la comunidad</h1>
+        </div>
+      </header>
 
-        <fieldset class="il-fieldset">
-          <legend>Tipo de cuenta</legend>
-          <label class="il-radio"><input type="radio" name="rol" value="estudiante" required /> Estudiante</label>
-          <label class="il-radio"><input type="radio" name="rol" value="docente" /> Profesor / Docente</label>
-          <label class="il-radio"><input type="radio" name="rol" value="padre" /> Padre / Madre de familia</label>
-          <label class="il-radio"><input type="radio" name="rol" value="directivo" /> Directivo</label>
-        </fieldset>
+      <div class="ob__progress" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" id="ob-progress">
+        <div class="ob__progress-track">
+          <span class="ob__progress-fill" id="ob-progress-fill"></span>
+        </div>
+        <div class="ob__steps">
+          <span class="ob__step is-active" data-ob-dot="1">1 · Nombre</span>
+          <span class="ob__step" data-ob-dot="2">2 · Rol</span>
+          <span class="ob__step" data-ob-dot="3">3 · Datos</span>
+        </div>
+      </div>
 
-        <div data-rol-fields="estudiante" hidden>
-          <label>
-            Grado
-            <select id="perfil-grado"></select>
+      <div class="ob__preview" id="ob-preview" aria-live="polite">
+        <span class="ob__preview-label">Así te verán</span>
+        <strong class="ob__preview-chip" id="ob-preview-chip">Completa tus datos…</strong>
+      </div>
+      <p class="il-error ob-step-error" id="ob-step-error" hidden></p>
+
+      <form id="form-onboarding" class="ob-form">
+        <!-- Paso 1 -->
+        <div class="ob-pane is-active" data-ob-step="1">
+          <h2 class="ob-pane__title">¿Cómo te llamas?</h2>
+          <p class="ob-pane__sub">Usa tu nombre real de la comunidad educativa.</p>
+          <label class="ob-field">
+            <span>Nombres</span>
+            <input type="text" id="perfil-nombres" required maxlength="80" autocomplete="given-name" placeholder="Ana María" />
           </label>
-        </div>
-
-        <div data-rol-fields="docente" hidden>
-          <p class="il-hint">Materias que dictas (puedes marcar varias)</p>
-          <div id="materias-list" class="il-checks"></div>
-          <label>
-            Área principal (aparece en tus publicaciones)
-            <select id="perfil-area"></select>
+          <label class="ob-field">
+            <span>Apellidos</span>
+            <input type="text" id="perfil-apellidos" required maxlength="80" autocomplete="family-name" placeholder="Pérez Gómez" />
           </label>
+          <button type="button" class="btn btn--primary btn--block ob-next" data-ob-next="2">Continuar</button>
         </div>
 
-        <div data-rol-fields="padre" hidden>
-          <fieldset class="il-fieldset">
-            <legend>Parentesco</legend>
-            <label class="il-radio"><input type="radio" name="parentesco" value="papa" /> Papá</label>
-            <label class="il-radio"><input type="radio" name="parentesco" value="mama" /> Mamá</label>
-          </fieldset>
-          <p class="il-hint">Hijos / hijas (obligatorio al menos uno)</p>
-          <div id="hijos-list"></div>
-          <button type="button" class="btn btn--ghost btn--sm" id="btn-add-hijo">+ Agregar hijo(a)</button>
+        <!-- Paso 2 -->
+        <div class="ob-pane" data-ob-step="2" hidden>
+          <h2 class="ob-pane__title">¿Quién eres en el colegio?</h2>
+          <p class="ob-pane__sub">Elige una opción. Podrás completar los detalles después.</p>
+          <div class="ob-roles" role="radiogroup" aria-label="Tipo de cuenta">
+            <label class="ob-role">
+              <input type="radio" name="rol" value="estudiante" required />
+              <span class="ob-role__card">
+                <span class="ob-role__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 5-9 5-9-5 9-5z" stroke="currentColor" stroke-width="1.7"/><path d="M5 10.5V16c0 .8 3.1 3 7 3s7-2.2 7-3v-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </span>
+                <span class="ob-role__text">
+                  <strong>Estudiante</strong>
+                  <small>Indicarás tu grado</small>
+                </span>
+              </span>
+            </label>
+            <label class="ob-role">
+              <input type="radio" name="rol" value="docente" />
+              <span class="ob-role__card">
+                <span class="ob-role__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V7l8-3 8 3v12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 19v-6h6v6M8 10h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </span>
+                <span class="ob-role__text">
+                  <strong>Profesor / Docente</strong>
+                  <small>Materias y área principal</small>
+                </span>
+              </span>
+            </label>
+            <label class="ob-role">
+              <input type="radio" name="rol" value="padre" />
+              <span class="ob-role__card">
+                <span class="ob-role__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="16" cy="9" r="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19M13 14.8c1.4-.5 2.8-.4 4.2.4 1.2.7 2 1.9 2.3 3.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </span>
+                <span class="ob-role__text">
+                  <strong>Padre / Madre</strong>
+                  <small>Datos de tu hijo(a)</small>
+                </span>
+              </span>
+            </label>
+            <label class="ob-role">
+              <input type="radio" name="rol" value="directivo" />
+              <span class="ob-role__card">
+                <span class="ob-role__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.6L19 9l-3.5 3.2.9 4.8L12 14.8 7.6 17l.9-4.8L5 9l4.8-1.4L12 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="ob-role__text">
+                  <strong>Directivo</strong>
+                  <small>Rector, coordinación, etc.</small>
+                </span>
+              </span>
+            </label>
+          </div>
+          <div class="ob-nav">
+            <button type="button" class="btn btn--ghost" data-ob-prev="1">Atrás</button>
+            <button type="button" class="btn btn--primary" data-ob-next="3">Continuar</button>
+          </div>
         </div>
 
-        <div data-rol-fields="directivo" hidden>
-          <label>
-            Cargo
-            <select id="perfil-cargo"></select>
-          </label>
-        </div>
+        <!-- Paso 3 -->
+        <div class="ob-pane" data-ob-step="3" hidden>
+          <h2 class="ob-pane__title" id="ob-step3-title">Últimos detalles</h2>
+          <p class="ob-pane__sub" id="ob-step3-sub">Completa la información de tu rol.</p>
 
-        <p class="il-error" id="onboarding-error" hidden></p>
-        <button type="submit" class="btn btn--primary btn--block">Guardar y entrar</button>
+          <div data-rol-fields="estudiante" hidden>
+            <label class="ob-field">
+              <span>Tu grado</span>
+              <select id="perfil-grado"></select>
+            </label>
+          </div>
+
+          <div data-rol-fields="docente" hidden>
+            <p class="il-hint">Materias que dictas (puedes marcar varias)</p>
+            <div id="materias-list" class="ob-chips"></div>
+            <label class="ob-field">
+              <span>Área principal (aparece en tus publicaciones)</span>
+              <select id="perfil-area"></select>
+            </label>
+          </div>
+
+          <div data-rol-fields="padre" hidden>
+            <p class="il-hint">Parentesco</p>
+            <div class="ob-parentesco">
+              <label class="ob-pill">
+                <input type="radio" name="parentesco" value="papa" />
+                <span>Papá</span>
+              </label>
+              <label class="ob-pill">
+                <input type="radio" name="parentesco" value="mama" />
+                <span>Mamá</span>
+              </label>
+            </div>
+            <p class="il-hint">Hijos / hijas (al menos uno)</p>
+            <div id="hijos-list"></div>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-add-hijo">+ Agregar hijo(a)</button>
+          </div>
+
+          <div data-rol-fields="directivo" hidden>
+            <label class="ob-field">
+              <span>Tu cargo</span>
+              <select id="perfil-cargo"></select>
+            </label>
+          </div>
+
+          <p class="il-error" id="onboarding-error" hidden></p>
+          <div class="ob-nav">
+            <button type="button" class="btn btn--ghost" data-ob-prev="2">Atrás</button>
+            <button type="submit" class="btn btn--accent">Entrar a InmaLink</button>
+          </div>
+        </div>
       </form>
     </div>
   </section>
@@ -117,6 +222,13 @@
     </header>
 
     <main id="main" class="il-main">
+      <aside class="il-rules il-rules--feed" role="note">
+        <strong>Recuerda</strong>
+        <p>
+          El mal comportamiento en InmaLink tiene
+          <strong>bloqueo definitivo</strong>. Cuida el respeto y el buen uso de la comunidad.
+        </p>
+      </aside>
       <div class="il-compose">
         <p class="il-compose__who" id="user-chip-label">—</p>
         <button type="button" class="btn btn--accent btn--block" id="btn-new-post">
@@ -131,6 +243,9 @@
   <dialog class="il-modal" id="modal-publish">
     <form class="il-modal__form" id="form-publish">
       <h2>Nueva publicación</h2>
+      <p class="il-rules__inline">
+        Publica con respeto. El mal uso puede causar <strong>bloqueo definitivo</strong>.
+      </p>
       <div id="publish-hijo-wrap" hidden>
         <label>
           Publicar como padre/madre de
@@ -168,9 +283,34 @@
   </dialog>
 
   <!-- Modal comentarios -->
-  <dialog class="il-modal" id="modal-comments">
+  <dialog class="il-modal il-modal--comments" id="modal-comments">
     <div class="il-modal__form">
       <h2 id="modal-comments-title">Comentarios</h2>
+
+      <div class="il-cfilters" id="comments-filters">
+        <p class="il-cfilters__label">Filtrar por</p>
+        <div class="il-cfilters__roles" role="group" aria-label="Filtrar por rol">
+          <button type="button" class="il-cchip is-active" data-cfilter-rol="">Todos</button>
+          <button type="button" class="il-cchip" data-cfilter-rol="directivo">Directivo</button>
+          <button type="button" class="il-cchip" data-cfilter-rol="padre">Padre / Madre</button>
+          <button type="button" class="il-cchip" data-cfilter-rol="docente">Docente</button>
+          <button type="button" class="il-cchip" data-cfilter-rol="estudiante">Estudiante</button>
+        </div>
+        <div class="il-cfilters__row">
+          <label class="il-cfilters__field">
+            Usuario
+            <input type="search" id="cfilter-usuario" placeholder="Nombre o apellido…" autocomplete="off" />
+          </label>
+          <label class="il-cfilters__field">
+            Grado
+            <select id="cfilter-grado">
+              <option value="">Todos</option>
+            </select>
+          </label>
+        </div>
+        <p class="il-cfilters__meta" id="cfilter-meta"></p>
+      </div>
+
       <div id="comments-list" class="il-comments"></div>
       <form id="form-comment" class="il-comment-form">
         <label>

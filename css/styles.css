@@ -703,6 +703,180 @@ body.has-install-bar .topbar {
   line-height: 1.4;
 }
 
+/* InmaLink — botón circular 3D (sale de la pantalla) */
+.social__inmalink {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  margin-top: 1.35rem;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.inmalink-fab {
+  --fab-size: clamp(5.75rem, 22vw, 7.25rem);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transform-style: preserve-3d;
+  animation: inmalinkPop 2.8s ease-in-out infinite;
+}
+
+.inmalink-fab__shadow {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -0.55rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 61, 120, 0.45) 0%, rgba(0, 61, 120, 0) 72%);
+  filter: blur(2px);
+  transform: translateZ(-20px);
+  animation: inmalinkShadow 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.inmalink-fab__ring {
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    #ffd200,
+    #0055a4,
+    #ffd200,
+    #003d78,
+    #ffd200
+  );
+  opacity: 0.95;
+  z-index: 0;
+  animation: inmalinkSpin 8s linear infinite;
+  pointer-events: none;
+}
+
+.inmalink-fab__ring::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #eef3f8;
+}
+
+.inmalink-fab__disc {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff;
+  border: 3px solid #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -10px 18px rgba(0, 61, 120, 0.12) inset,
+    0 14px 28px rgba(0, 61, 120, 0.28),
+    0 28px 48px rgba(0, 85, 164, 0.22),
+    0 4px 0 #003d78;
+  transform: translateZ(24px);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.inmalink-fab__disc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.inmalink-fab:hover .inmalink-fab__disc,
+.inmalink-fab:focus-visible .inmalink-fab__disc {
+  transform: translateZ(34px) translateY(-6px) scale(1.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -10px 18px rgba(0, 61, 120, 0.12) inset,
+    0 22px 40px rgba(0, 61, 120, 0.32),
+    0 40px 64px rgba(0, 85, 164, 0.28),
+    0 6px 0 #003d78;
+}
+
+.inmalink-fab:active .inmalink-fab__disc {
+  transform: translateZ(10px) translateY(2px) scale(0.98);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 16px rgba(0, 61, 120, 0.22),
+    0 2px 0 #003d78;
+}
+
+.inmalink-fab:focus-visible {
+  outline: none;
+}
+
+.inmalink-fab:focus-visible .inmalink-fab__ring {
+  box-shadow: 0 0 0 3px rgba(0, 85, 164, 0.35);
+}
+
+.inmalink-fab__caption {
+  margin: 0.15rem 0 0;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--blue-deep);
+  letter-spacing: 0.02em;
+}
+
+.inmalink-fab__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+
+@keyframes inmalinkPop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes inmalinkShadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scaleX(0.78);
+    opacity: 0.55;
+  }
+}
+
+@keyframes inmalinkSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inmalink-fab,
+  .inmalink-fab__shadow,
+  .inmalink-fab__ring {
+    animation: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .inmalink-fab {
+    --fab-size: 5.25rem;
+  }
+}
+
 /* Cómo llegar / Maps */
 .maps-block {
   margin-top: 1.75rem;
