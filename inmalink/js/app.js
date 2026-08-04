@@ -1690,85 +1690,122 @@
     });
   }
 
-  function ilDriveFailHtml(id, posterSrc) {
-    const img = posterSrc
-      ? `<img class="il-drive-poster__img" src="${String(posterSrc).replace(/"/g, "&quot;")}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
-      : "";
-    const viewUrl = `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
-    return `
-      <div class="il-drive-fail">
-        ${img}
-        <p class="il-drive-fail__msg">No se pudo reproducir aquí</p>
-        <div class="il-drive-fail__actions">
-          <button type="button" class="btn btn--primary" data-drive-play>Reintentar</button>
-          <a class="btn btn--ghost" href="${viewUrl}" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>
-        </div>
-      </div>
-    `;
+  function ilDriveApiKeys() {
+    return [
+      ...new Set(
+        [
+          window.INMALINK_FIREBASE_CONFIG?.apiKey,
+          window.INMALINK_FIREBASE_CONFIG?.driveApiKey,
+          window.FIREBASE_CONFIG?.apiKey,
+        ].filter(Boolean)
+      ),
+    ];
   }
 
   function ilDriveCandidateUrls(id) {
-    const urls = [];
-    const key = window.INMALINK_FIREBASE_CONFIG?.apiKey || "";
-    if (key) {
-      urls.push(
+    return ilDriveApiKeys().map(
+      (key) =>
         `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(key)}`
-      );
-    }
-    urls.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
-    urls.push(`https://docs.google.com/uc?export=download&id=${encodeURIComponent(id)}`);
-    return urls;
+    );
   }
 
-  function playInmaDrive(wrap, id, posterSrc) {
-    const candidates = ilDriveCandidateUrls(id);
-    if (!candidates.length) {
-      wrap.classList.remove("is-playing");
-      wrap.innerHTML = ilDriveFailHtml(id, posterSrc);
-      return;
-    }
-
+  function mountIlDriveIframe(wrap, id) {
     wrap.classList.add("is-playing");
-    const posterAttr = posterSrc
-      ? `poster="${String(posterSrc).replace(/"/g, "&quot;")}"`
-      : "";
-    wrap.innerHTML = `<video class="il-drive-video" controls playsinline webkit-playsinline preload="metadata" ${posterAttr}></video>`;
-    const video = wrap.querySelector("video");
-    if (!video) return;
+    wrap.innerHTML = `
+      <iframe
+        class="il-drive-frame"
+        src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview"
+        title="Video de Drive"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowfullscreen
+        loading="eager"
+        referrerpolicy="strict-origin-when-cross-origin"
+      ></iframe>
+    `;
+  }
 
-    let idx = 0;
-    let settled = false;
-    const fail = () => {
-      if (settled) return;
-      settled = true;
-      wrap.classList.remove("is-playing");
-      wrap.innerHTML = ilDriveFailHtml(id, posterSrc);
-    };
-    const tryNext = () => {
-      if (idx >= candidates.length) {
-        fail();
-        return;
-      }
-      const url = candidates[idx++];
+  function tryIlDriveNative(wrap, url, posterSrc) {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.className = "il-drive-video";
+      video.controls = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      video.preload = "metadata";
+      if (posterSrc) video.poster = posterSrc;
+
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        video.removeEventListener("loadeddata", onOk);
+        video.removeEventListener("canplay", onOk);
+        video.removeEventListener("error", onErr);
+        if (ok) {
+          wrap.classList.add("is-playing");
+          wrap.innerHTML = "";
+          wrap.appendChild(video);
+          video.play()?.catch?.(() => {});
+          resolve(true);
+        } else {
+          video.removeAttribute("src");
+          try {
+            video.load();
+          } catch {
+            /* ignore */
+          }
+          resolve(false);
+        }
+      };
+      const onOk = () => finish(true);
+      const onErr = () => finish(false);
+      const timer = window.setTimeout(() => finish(false), 1800);
+
+      video.addEventListener("loadeddata", onOk, { once: true });
+      video.addEventListener("canplay", onOk, { once: true });
+      video.addEventListener("error", onErr, { once: true });
       video.src = url;
       video.load();
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(() => {
-          /* Controles nativos: el usuario puede pulsar ▶ */
-        });
-      }
-    };
+    });
+  }
 
-    video.addEventListener("error", () => tryNext());
-    video.addEventListener(
-      "loadeddata",
-      () => {
-        settled = true;
-      },
-      { once: true }
-    );
-    tryNext();
+  async function probeDriveMediaUrl(url) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-1" },
+      });
+      if (!res.ok) return false;
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      return (
+        ct.includes("video") ||
+        ct.includes("octet-stream") ||
+        ct.includes("mp4") ||
+        ct.includes("webm")
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  async function playInmaDrive(wrap, id, posterSrc) {
+    wrap.classList.add("is-playing");
+    wrap.innerHTML = `<div class="il-drive-loading" role="status">Cargando video…</div>`;
+
+    const candidates = ilDriveCandidateUrls(id);
+    for (const url of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      const usable = await probeDriveMediaUrl(url);
+      if (!usable) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const ok = await tryIlDriveNative(wrap, url, posterSrc);
+      if (ok) return;
+    }
+
+    // Preview de Drive en la tarjeta (sin modal). Google exige su propio ▶.
+    mountIlDriveIframe(wrap, id);
   }
 
   async function boot() {
