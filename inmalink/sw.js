@@ -1,21 +1,12 @@
-/* Service Worker — Colegio La Inmaculada PWA */
-const CACHE_NAME = "inmaculada-v51";
+/* Service Worker — InmaLink */
+const CACHE_NAME = "inmalink-v2";
 const ASSETS = [
   "./index.html",
-  "./css/styles.css",
-  "./css/ayuda-nav.css",
+  "./css/inmalink.css",
   "./js/app.js",
-  "./js/shared-content.js",
-  "./js/ayuda-nav.js",
-  "./js/pwa-install.js",
+  "./js/media.js",
   "./js/firebase-config.js",
   "./manifest.json",
-  "./data/contenido.json",
-  "./image/logoInmaculada.jpg",
-  "./image/fondoApp.jpeg",
-  "./image/icon-192.png",
-  "./image/icon-512.png",
-  "./image/ayudas.jpeg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -43,44 +34,24 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
 
-  // Dejar que las PWA anidadas (docentes/admin/bienestar/personero) se controlen solas
-  if (
-    url.origin === self.location.origin &&
-    (url.pathname.startsWith("/docentes/") ||
-      url.pathname.startsWith("/admin/") ||
-      url.pathname.startsWith("/bienestar/") ||
-      url.pathname.startsWith("/personero/") ||
-      url.pathname.startsWith("/inmalink/"))
-  ) {
-    return;
-  }
-
-  if (url.hostname.includes("psepagos.co") || url.hostname.includes("pse.com.co")) {
-    return;
-  }
-
-  // No cachear Firebase / Google
   if (
     url.hostname.includes("googleapis.com") ||
     url.hostname.includes("gstatic.com") ||
     url.hostname.includes("firebaseio.com") ||
-    url.hostname.includes("firebaseapp.com")
+    url.hostname.includes("firebaseapp.com") ||
+    url.hostname.includes("google.com")
   ) {
     return;
   }
 
-  // HTML y JS/CSS: red primero (para ver comunicados nuevos y código actualizado)
   const path = url.pathname;
   const networkFirst =
     request.mode === "navigate" ||
     path.endsWith(".js") ||
     path.endsWith(".css") ||
-    path.endsWith(".html") ||
-    path.includes("/js/") ||
-    path.includes("/css/");
+    path.endsWith(".html");
 
   if (networkFirst) {
     event.respondWith(

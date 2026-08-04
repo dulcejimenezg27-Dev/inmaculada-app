@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function perfilValido() {
+      return request.resource.data.keys().hasAll(['nombres', 'apellidos', 'rol', 'uid'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rol in ['estudiante', 'docente', 'padre', 'directivo']
+        && request.resource.data.nombres is string
+        && request.resource.data.apellidos is string
+        && request.resource.data.nombres.size() > 0
+        && request.resource.data.nombres.size() <= 80
+        && request.resource.data.apellidos.size() > 0
+        && request.resource.data.apellidos.size() <= 80;
+    }
+
+    // Perfiles de usuarios InmaLink
+    match /perfiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && perfilValido();
+      allow delete: if false;
+    }
+
+    // Publicaciones del feed
+    match /posts/{postId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.autorUid == request.auth.uid
+        && request.resource.data.titulo is string
+        && request.resource.data.mensaje is string
+        && request.resource.data.titulo.size() > 0
+        && request.resource.data.titulo.size() <= 120
+        && request.resource.data.mensaje.size() > 0
+        && request.resource.data.mensaje.size() <= 1200;
+
+      // Dueño puede editar su post; cualquiera autenticado puede dar like / contar comentarios
+      allow update: if signedIn() && (
+        resource.data.autorUid == request.auth.uid
+        || (
+          request.resource.data.autorUid == resource.data.autorUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['likedBy', 'likesCount', 'dislikedBy', 'dislikesCount', 'updatedAt', 'comentariosCount'])
+        )
+      );
+
+      allow delete: if signedIn() && resource.data.autorUid == request.auth.uid;
+
+      // Comentarios de cada publicación
+      match /comentarios/{commentId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.autorUid == request.auth.uid
+          && request.resource.data.texto is string
+          && request.resource.data.texto.size() > 0
+          && request.resource.data.texto.size() <= 500;
+
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.autorUid == request.auth.uid;
+      }
+    }
+  }
+}

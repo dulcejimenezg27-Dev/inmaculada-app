@@ -590,6 +590,7 @@ body.has-install-bar .topbar {
 .quick__item:nth-child(6) { animation-delay: 0.22s; }
 .quick__item:nth-child(7) { animation-delay: 0.26s; }
 .quick__item:nth-child(8) { animation-delay: 0.3s; }
+.quick__item:nth-child(9) { animation-delay: 0.34s; }
 
 .quick__item:hover,
 .quick__item:focus-visible {

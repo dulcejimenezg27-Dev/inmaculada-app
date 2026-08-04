@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#003d78" />
+  <meta name="description" content="InmaLink — red social de la comunidad educativa Colegio La Inmaculada" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="InmaLink" />
+  <link rel="manifest" href="/inmalink/manifest.json" />
+  <title>InmaLink · Colegio La Inmaculada</title>
+  <link rel="icon" type="image/png" href="/image/icon-192.png" />
+  <link rel="apple-touch-icon" href="/image/icon-192.png" />
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/inmalink/sw.js", { scope: "/inmalink/" }).catch(function () {});
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/inmalink.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <!-- LOGIN -->
+  <section class="il-screen il-login" data-screen="login">
+    <div class="il-login__card">
+      <img src="/image/logoInmaculada.jpg" alt="Logo Colegio La Inmaculada" class="il-login__logo" width="88" height="88" />
+      <p class="il-login__eyebrow">Colegio La Inmaculada</p>
+      <h1>InmaLink</h1>
+      <p class="il-login__lead">La red de la comunidad educativa: publica, comenta y comparte.</p>
+      <button type="button" class="btn btn--google" id="btn-google">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continuar con Google
+      </button>
+      <p class="il-error" id="login-error" hidden></p>
+      <a class="il-back" href="/">← Volver a Inmaculada App</a>
+    </div>
+  </section>
+
+  <!-- ONBOARDING -->
+  <section class="il-screen il-onboarding" data-screen="onboarding" hidden>
+    <div class="il-panel">
+      <h1>Completa tu perfil</h1>
+      <p class="il-lead">Así te identificarán en tus publicaciones.</p>
+      <form id="form-onboarding" class="il-form">
+        <label>
+          Nombres
+          <input type="text" id="perfil-nombres" required maxlength="80" autocomplete="given-name" placeholder="Ana María" />
+        </label>
+        <label>
+          Apellidos
+          <input type="text" id="perfil-apellidos" required maxlength="80" autocomplete="family-name" placeholder="Pérez Gómez" />
+        </label>
+
+        <fieldset class="il-fieldset">
+          <legend>Tipo de cuenta</legend>
+          <label class="il-radio"><input type="radio" name="rol" value="estudiante" required /> Estudiante</label>
+          <label class="il-radio"><input type="radio" name="rol" value="docente" /> Profesor / Docente</label>
+          <label class="il-radio"><input type="radio" name="rol" value="padre" /> Padre / Madre de familia</label>
+          <label class="il-radio"><input type="radio" name="rol" value="directivo" /> Directivo</label>
+        </fieldset>
+
+        <div data-rol-fields="estudiante" hidden>
+          <label>
+            Grado
+            <select id="perfil-grado"></select>
+          </label>
+        </div>
+
+        <div data-rol-fields="docente" hidden>
+          <p class="il-hint">Materias que dictas (puedes marcar varias)</p>
+          <div id="materias-list" class="il-checks"></div>
+          <label>
+            Área principal (aparece en tus publicaciones)
+            <select id="perfil-area"></select>
+          </label>
+        </div>
+
+        <div data-rol-fields="padre" hidden>
+          <fieldset class="il-fieldset">
+            <legend>Parentesco</legend>
+            <label class="il-radio"><input type="radio" name="parentesco" value="papa" /> Papá</label>
+            <label class="il-radio"><input type="radio" name="parentesco" value="mama" /> Mamá</label>
+          </fieldset>
+          <p class="il-hint">Hijos / hijas (obligatorio al menos uno)</p>
+          <div id="hijos-list"></div>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-add-hijo">+ Agregar hijo(a)</button>
+        </div>
+
+        <div data-rol-fields="directivo" hidden>
+          <label>
+            Cargo
+            <select id="perfil-cargo"></select>
+          </label>
+        </div>
+
+        <p class="il-error" id="onboarding-error" hidden></p>
+        <button type="submit" class="btn btn--primary btn--block">Guardar y entrar</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section class="il-screen il-app" data-screen="app" hidden>
+    <header class="il-top">
+      <div class="il-top__brand">
+        <img src="/image/logoInmaculada.jpg" alt="" width="40" height="40" />
+        <div>
+          <strong>InmaLink</strong>
+          <span id="top-user-name">—</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" id="btn-logout">Salir</button>
+    </header>
+
+    <main id="main" class="il-main">
+      <div class="il-compose">
+        <p class="il-compose__who" id="user-chip-label">—</p>
+        <button type="button" class="btn btn--accent btn--block" id="btn-new-post">
+          Quiero hacer una publicación
+        </button>
+      </div>
+      <div id="feed-list" class="il-feed"></div>
+    </main>
+  </section>
+
+  <!-- Modal publicar -->
+  <dialog class="il-modal" id="modal-publish">
+    <form class="il-modal__form" id="form-publish">
+      <h2>Nueva publicación</h2>
+      <div id="publish-hijo-wrap" hidden>
+        <label>
+          Publicar como padre/madre de
+          <select id="publish-hijo"></select>
+        </label>
+      </div>
+      <label>
+        Título
+        <input type="text" name="titulo" required maxlength="120" />
+      </label>
+      <label>
+        Mensaje
+        <textarea name="mensaje" required rows="4" maxlength="1200"></textarea>
+      </label>
+      <p class="il-hint">Multimedia (opcional)</p>
+      <label>
+        Video de YouTube
+        <input type="text" name="videoYoutube" inputmode="url" placeholder="https://www.youtube.com/watch?v=..." />
+      </label>
+      <label>
+        Video de Drive
+        <input type="text" name="videoDrive" inputmode="url" placeholder="https://drive.google.com/file/d/..." />
+      </label>
+      <label>
+        Imagen de Drive
+        <input type="text" name="imagenDrive" inputmode="url" placeholder="https://drive.google.com/file/d/..." />
+      </label>
+      <p class="il-help">En Drive: «Cualquier persona con el enlace» → Visor.</p>
+      <p class="il-error" id="publish-error" hidden></p>
+      <div class="il-modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-publish">Cancelar</button>
+        <button type="submit" class="btn btn--primary">Publicar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal comentarios -->
+  <dialog class="il-modal" id="modal-comments">
+    <div class="il-modal__form">
+      <h2 id="modal-comments-title">Comentarios</h2>
+      <div id="comments-list" class="il-comments"></div>
+      <form id="form-comment" class="il-comment-form">
+        <label>
+          Escribe un comentario
+          <textarea id="comment-text" rows="2" maxlength="500" required placeholder="Tu comentario…"></textarea>
+        </label>
+        <div class="il-modal__actions">
+          <button type="button" class="btn btn--ghost" data-close-modal="modal-comments">Cerrar</button>
+          <button type="submit" class="btn btn--primary">Comentar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/media.js"></script>
+  <script type="module" src="js/firebase.js"></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
