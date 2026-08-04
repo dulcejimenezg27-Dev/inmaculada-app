@@ -233,6 +233,7 @@ async function addComentario(postId, texto, meta = {}) {
   await initPromise;
   if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
   const autorUid = meta.autorUid || auth.currentUser.uid;
+  const parentId = String(meta.parentId || "").trim();
   const ref = collection(db, "posts", postId, "comentarios");
   await addDoc(ref, sanitize({
     texto: String(texto || "").trim(),
@@ -244,6 +245,9 @@ async function addComentario(postId, texto, meta = {}) {
     autorApellidos: String(meta.autorApellidos || "").trim(),
     autorFotoUrl: String(meta.autorFotoUrl || "").trim(),
     autorEmail: String(meta.autorEmail || auth.currentUser.email || "").trim(),
+    parentId,
+    replyToLabel: String(meta.replyToLabel || "").trim(),
+    replyToUid: String(meta.replyToUid || "").trim(),
     likesCount: 0,
     likedBy: [],
     dislikesCount: 0,
@@ -339,6 +343,7 @@ async function updatePost(postId, data) {
       imagenDrive: String(data.imagenDrive || "").trim(),
       autorLabel: String(data.autorLabel || snap.data().autorLabel || "").trim(),
       autorRol: String(data.autorRol || snap.data().autorRol || "").trim(),
+      autorGrado: String(data.autorGrado || snap.data().autorGrado || "").trim(),
       autorFotoUrl: String(data.autorFotoUrl || snap.data().autorFotoUrl || "").trim(),
       autorEmail: String(data.autorEmail || snap.data().autorEmail || auth.currentUser.email || "").trim(),
       updatedAt: new Date().toISOString(),

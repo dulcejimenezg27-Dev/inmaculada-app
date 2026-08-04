@@ -256,6 +256,19 @@
           Quiero hacer una publicación
         </button>
       </div>
+
+      <div class="il-cfilters il-cfilters--feed" id="feed-filters">
+        <p class="il-cfilters__label">Filtrar publicaciones</p>
+        <div class="il-cfilters__roles" role="group" aria-label="Filtrar por rol">
+          <button type="button" class="il-cchip is-active" data-ffilter-rol="">Todos</button>
+          <button type="button" class="il-cchip" data-ffilter-rol="directivo">Directivo</button>
+          <button type="button" class="il-cchip" data-ffilter-rol="padre">Padre / Madre</button>
+          <button type="button" class="il-cchip" data-ffilter-rol="docente">Docente</button>
+          <button type="button" class="il-cchip" data-ffilter-rol="estudiante">Estudiante</button>
+        </div>
+        <p class="il-cfilters__meta" id="ffilter-meta"></p>
+      </div>
+
       <div id="feed-list" class="il-feed"></div>
     </main>
   </section>
@@ -421,39 +434,27 @@
     <div class="il-modal__form">
       <h2 id="modal-comments-title">Comentarios</h2>
 
-      <div class="il-cfilters" id="comments-filters">
-        <p class="il-cfilters__label">Filtrar por</p>
-        <div class="il-cfilters__roles" role="group" aria-label="Filtrar por rol">
-          <button type="button" class="il-cchip is-active" data-cfilter-rol="">Todos</button>
-          <button type="button" class="il-cchip" data-cfilter-rol="directivo">Directivo</button>
-          <button type="button" class="il-cchip" data-cfilter-rol="padre">Padre / Madre</button>
-          <button type="button" class="il-cchip" data-cfilter-rol="docente">Docente</button>
-          <button type="button" class="il-cchip" data-cfilter-rol="estudiante">Estudiante</button>
-        </div>
-        <div class="il-cfilters__row">
-          <label class="il-cfilters__field">
-            Usuario
-            <input type="search" id="cfilter-usuario" placeholder="Nombre o apellido…" autocomplete="off" />
-          </label>
-          <label class="il-cfilters__field">
-            Grado
-            <select id="cfilter-grado">
-              <option value="">Todos</option>
-            </select>
-          </label>
-        </div>
-        <p class="il-cfilters__meta" id="cfilter-meta"></p>
-      </div>
-
       <div id="comments-list" class="il-comments"></div>
       <form id="form-comment" class="il-comment-form">
+        <div class="il-reply-banner" id="reply-banner" hidden>
+          <p>
+            Respondiendo a <strong id="reply-banner-name">—</strong>
+          </p>
+          <button type="button" class="il-link" id="btn-cancel-reply">Cancelar</button>
+        </div>
+        <div id="comment-hijo-wrap" hidden>
+          <label>
+            Comentar como padre/madre de
+            <select id="comment-hijo"></select>
+          </label>
+        </div>
         <label>
-          Escribe un comentario
+          <span id="comment-text-label">Escribe un comentario</span>
           <textarea id="comment-text" rows="2" maxlength="500" required placeholder="Tu comentario…"></textarea>
         </label>
         <div class="il-modal__actions">
           <button type="button" class="btn btn--ghost" data-close-modal="modal-comments">Cerrar</button>
-          <button type="submit" class="btn btn--primary">Comentar</button>
+          <button type="submit" class="btn btn--primary" id="btn-comment-submit">Comentar</button>
         </div>
       </form>
     </div>

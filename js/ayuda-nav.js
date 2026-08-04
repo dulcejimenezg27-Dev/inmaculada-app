@@ -85,7 +85,7 @@
         <h3>Me gusta</h3>
         <p>En <strong>Comunicados</strong>, <strong>Bienestar</strong> y <strong>Personería</strong> puedes tocar el corazón ♡ para dar me gusta. No necesitas iniciar sesión. En InmaLink los me gusta sí requieren cuenta de Google.</p>
         <h3>Filtros</h3>
-        <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.). En los comentarios de InmaLink también puedes filtrar por rol, usuario o grado.</p>
+        <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.). En InmaLink puedes filtrar el feed por rol (directivo, docente, padre/madre, estudiante).</p>
         <h3>Otros accesos</h3>
         <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook, el <strong>canal de WhatsApp</strong> del colegio, el botón de <strong>InmaLink</strong> y Google Maps.</p>
         ${installHtml(INSTALL.publica)}

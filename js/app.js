@@ -442,43 +442,89 @@
     )}?alt=media&key=${encodeURIComponent(key)}`;
   }
 
-  function mountDriveIframe(wrap, id, posterSrc, posterAlt) {
-    wrap.innerHTML = `
+  function drivePosterButtonHtml(id, posterSrc, posterAlt) {
+    const img = posterSrc
+      ? `<img class="media-drive-poster__img" src="${String(posterSrc).replace(/"/g, "&quot;")}" alt="${String(posterAlt || "").replace(/"/g, "&quot;")}" loading="lazy" referrerpolicy="no-referrer" decoding="async" />`
+      : "";
+    return `
+      <button type="button" class="media-drive-poster" data-drive-play aria-label="Reproducir video de Drive">
+        ${img}
+        <span class="media-drive-poster__shade" aria-hidden="true"></span>
+        <span class="media-drive-poster__play" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
+        </span>
+        <span class="media-drive-poster__label">Video de Drive · Toca para ver</span>
+      </button>
+    `;
+  }
+
+  function ensureDrivePlayerModal() {
+    let dialog = document.getElementById("modal-drive-player");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "modal-drive-player";
+    dialog.className = "modal modal--drive-player";
+    dialog.innerHTML = `
+      <div class="drive-player-panel">
+        <header class="drive-player-panel__head">
+          <strong>Video de Drive</strong>
+          <button type="button" class="drive-player-panel__close" data-drive-player-close aria-label="Cerrar">×</button>
+        </header>
+        <div class="drive-player-panel__frame" id="drive-player-frame"></div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    const close = () => {
+      const frame = dialog.querySelector("#drive-player-frame");
+      if (frame) frame.innerHTML = "";
+      if (dialog.open) dialog.close();
+      else dialog.removeAttribute("open");
+    };
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog || e.target.closest("[data-drive-player-close]")) {
+        e.preventDefault();
+        close();
+      }
+    });
+    dialog.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      close();
+    });
+    return dialog;
+  }
+
+  function openDrivePlayerModal(id) {
+    const dialog = ensureDrivePlayerModal();
+    const frame = dialog.querySelector("#drive-player-frame");
+    if (!frame || !id) return;
+    frame.innerHTML = `
       <iframe
-        src="https://drive.google.com/file/d/${id}/preview?autoplay=1"
+        src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview"
         title="Video de Drive"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
         allowfullscreen
         loading="eager"
         referrerpolicy="strict-origin-when-cross-origin"
       ></iframe>
-      <div class="media-drive-cover media-drive-cover--passive" aria-hidden="true">
-        ${
-          posterSrc
-            ? `<img class="media-drive-cover__img" src="${posterSrc.replace(/"/g, "&quot;")}" alt="${String(posterAlt).replace(/"/g, "&quot;")}" referrerpolicy="no-referrer" />`
-            : ""
-        }
-      </div>
     `;
-    const cover = wrap.querySelector(".media-drive-cover");
-    const iframe = wrap.querySelector("iframe");
-    let revealed = false;
-    const reveal = () => {
-      if (revealed || !cover) return;
-      revealed = true;
-      cover.classList.add("is-ready");
-      window.setTimeout(() => cover.remove(), 320);
-    };
-    iframe?.addEventListener("load", () => window.setTimeout(reveal, 280), { once: true });
-    window.setTimeout(reveal, 2200);
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function mountDriveIframe(wrap, id, posterSrc, posterAlt) {
+    // El iframe de Drive en el recuadro del feed tapa el video con controles enormes.
+    // Lo abrimos en un modal grande y dejamos la miniatura limpia en el aviso.
+    wrap.classList.remove("is-playing");
+    wrap.innerHTML = drivePosterButtonHtml(id, posterSrc, posterAlt);
+    openDrivePlayerModal(id);
   }
 
   function playDriveFromPoster(wrap, id, posterSrc, posterAlt) {
-    wrap.classList.add("is-playing");
     const mediaUrl = driveMediaUrl(id);
 
-    // Intento 1: <video> nativo (un solo toque). Si Drive API no deja, cae al iframe.
+    // Intento 1: <video> nativo en el feed (controles limpios). Si falla → modal con iframe.
     if (mediaUrl) {
+      wrap.classList.add("is-playing");
       wrap.innerHTML = `
         <video
           class="media-drive-video"
@@ -499,20 +545,18 @@
           mountDriveIframe(wrap, id, posterSrc, posterAlt);
         };
         video.addEventListener("error", fallback, { once: true });
-        // play() en el mismo gesto del usuario → inicia al primer toque
         const p = video.play();
         if (p && typeof p.catch === "function") {
           p.catch(() => {
-            // Autoplay bloqueado: el control nativo sigue siendo 1 toque en ▶
+            /* el usuario puede pulsar ▶ nativo */
           });
         }
-        // Si en ~2.5s no hay datos, el iframe suele ser más fiable
         window.setTimeout(() => {
           if (fellBack) return;
           if (video.readyState >= 2 || video.currentTime > 0) return;
           if (!video.paused && video.readyState >= 1) return;
           fallback();
-        }, 2500);
+        }, 4000);
       }
       return;
     }

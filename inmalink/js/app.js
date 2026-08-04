@@ -46,7 +46,8 @@
   let commentsUnsub = null;
   let openCommentsPostId = null;
   let commentsRaw = [];
-  let commentFilters = { rol: "", usuario: "", grado: "" };
+  let feedFilters = { rol: "" };
+  let replyTarget = null; // { rootId, replyToId, replyToLabel, replyToUid }
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -55,11 +56,12 @@
     return String(str || "").trim().split(/\s+/).filter(Boolean)[0] || "";
   }
 
-  function commentAutorGrado(perfilData) {
+  function postAutorGrado(perfilData, hijoIndex = 0) {
     if (!perfilData) return "";
     if (perfilData.rol === "estudiante") return String(perfilData.grado || "").trim();
-    if (perfilData.rol === "padre" && Array.isArray(perfilData.hijos) && perfilData.hijos[0]) {
-      return String(perfilData.hijos[0].grado || "").trim();
+    if (perfilData.rol === "padre" && Array.isArray(perfilData.hijos)) {
+      const hijo = perfilData.hijos[hijoIndex] || perfilData.hijos[0];
+      return String(hijo?.grado || "").trim();
     }
     return "";
   }
@@ -77,126 +79,177 @@
     return "";
   }
 
-  function inferCommentGrado(c) {
-    const g = String(c.autorGrado || "").trim();
-    if (g) return g;
-    const label = String(c.autorLabel || "");
-    const m = label.match(/·\s*([0-9]{1,2}-[AB]|Transición-[AB])\s*$/i);
-    return m ? m[1] : "";
+  function inferPostRol(p) {
+    return inferCommentRol(p);
   }
 
-  function commentSearchText(c) {
-    return [c.autorNombre, c.autorApellidos, c.autorLabel, c.texto]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+  function filteredPosts() {
+    const rol = feedFilters.rol;
+    if (!rol) return posts;
+    return posts.filter((p) => inferPostRol(p) === rol);
   }
 
-  function filteredComments() {
-    const qUser = String(commentFilters.usuario || "").trim().toLowerCase();
-    const rol = commentFilters.rol;
-    const grado = commentFilters.grado;
-    return commentsRaw.filter((c) => {
-      if (rol && inferCommentRol(c) !== rol) return false;
-      if (grado && inferCommentGrado(c) !== grado) return false;
-      if (qUser && !commentSearchText(c).includes(qUser)) return false;
-      return true;
+  function commentThreadRootId(c) {
+    const parent = String(c.parentId || "").trim();
+    return parent || c.id;
+  }
+
+  function buildCommentThreads(items) {
+    const roots = [];
+    const repliesByParent = new Map();
+    (items || []).forEach((c) => {
+      const parent = String(c.parentId || "").trim();
+      if (!parent) {
+        roots.push(c);
+        return;
+      }
+      if (!repliesByParent.has(parent)) repliesByParent.set(parent, []);
+      repliesByParent.get(parent).push(c);
     });
+    const byDateAsc = (a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+    const byDateDesc = (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+    roots.sort(byDateDesc);
+    roots.forEach((r) => {
+      const list = repliesByParent.get(r.id) || [];
+      list.sort(byDateAsc);
+      r._replies = list;
+    });
+    // Respuestas huérfanas (padre borrado): mostrarlas como raíz
+    repliesByParent.forEach((list, parentId) => {
+      if (roots.some((r) => r.id === parentId)) return;
+      list.sort(byDateDesc);
+      list.forEach((c) => {
+        c._replies = [];
+        roots.push(c);
+      });
+    });
+    roots.sort(byDateDesc);
+    return roots;
   }
 
-  function syncCommentGradoOptions() {
-    const sel = $("#cfilter-grado");
-    if (!sel) return;
-    const current = commentFilters.grado || "";
-    const grades = new Set(GRADOS);
-    commentsRaw.forEach((c) => {
-      const g = inferCommentGrado(c);
-      if (g) grades.add(g);
-    });
-    const list = [...grades];
-    sel.innerHTML =
-      `<option value="">Todos</option>` +
-      list
-        .map(
-          (g) =>
-            `<option value="${M().escapeAttr(g)}"${g === current ? " selected" : ""}>${M().escapeHtml(g)}</option>`
-        )
-        .join("");
+  function clearReplyTarget() {
+    replyTarget = null;
+    const banner = $("#reply-banner");
+    if (banner) banner.hidden = true;
+    const name = $("#reply-banner-name");
+    if (name) name.textContent = "—";
+    const label = $("#comment-text-label");
+    if (label) label.textContent = "Escribe un comentario";
+    const submit = $("#btn-comment-submit");
+    if (submit) submit.textContent = "Comentar";
+    const text = $("#comment-text");
+    if (text) text.placeholder = "Tu comentario…";
+  }
+
+  function setReplyTarget(comment) {
+    if (!comment) {
+      clearReplyTarget();
+      return;
+    }
+    const rootId = commentThreadRootId(comment);
+    replyTarget = {
+      rootId,
+      replyToId: comment.id,
+      replyToLabel: comment.autorLabel || "Usuario",
+      replyToUid: comment.autorUid || "",
+    };
+    const banner = $("#reply-banner");
+    if (banner) banner.hidden = false;
+    const name = $("#reply-banner-name");
+    if (name) name.textContent = replyTarget.replyToLabel;
+    const label = $("#comment-text-label");
+    if (label) label.textContent = "Escribe tu respuesta";
+    const submit = $("#btn-comment-submit");
+    if (submit) submit.textContent = "Responder";
+    const text = $("#comment-text");
+    if (text) {
+      text.placeholder = `Respuesta a ${replyTarget.replyToLabel}…`;
+      text.focus();
+    }
+  }
+
+  function renderOneComment(c, opts = {}) {
+    const esc = M().escapeHtml;
+    const uid = user?.uid || "";
+    const liked = Array.isArray(c.likedBy) && uid && c.likedBy.includes(uid);
+    const disliked = Array.isArray(c.dislikedBy) && uid && c.dislikedBy.includes(uid);
+    const mine = c.autorUid === uid;
+    const foto = c.autorFotoUrl || (mine ? perfil?.fotoUrl : "") || "";
+    const label = c.autorLabel || "Usuario";
+    const isReply = !!opts.isReply;
+    const replyHint = c.replyToLabel
+      ? `<p class="il-comment__reply-to">Respondió a <strong>${esc(c.replyToLabel)}</strong></p>`
+      : "";
+    return `
+      <div class="il-comment${isReply ? " il-comment--reply" : ""}" data-id="${esc(c.id)}">
+        <div class="il-comment__top">
+          <div class="il-comment__who">
+            ${driveAvatarHtml(foto, label, {
+              sm: isReply,
+              email: c.autorEmail || (mine ? user?.email || perfil?.email : "") || "",
+              uid: c.autorUid || "",
+            })}
+            <div class="il-comment__meta">
+              <strong class="il-comment__author">${esc(label)}</strong>
+              <time>${esc(formatFecha(c.updatedAt || c.createdAt))}${c.updatedAt && c.updatedAt !== c.createdAt ? " · editado" : ""}</time>
+            </div>
+          </div>
+        </div>
+        ${replyHint}
+        <p class="il-comment__text" data-ctext="${esc(c.id)}">${esc(c.texto || "")}</p>
+        <div class="il-comment__edit" data-cedit-box="${esc(c.id)}" hidden>
+          <textarea rows="3" maxlength="500">${esc(c.texto || "")}</textarea>
+          <div class="il-comment__edit-actions">
+            <button type="button" class="btn btn--ghost btn--sm" data-cedit-cancel="${esc(c.id)}">Cancelar</button>
+            <button type="button" class="btn btn--primary btn--sm" data-cedit-save="${esc(c.id)}">Guardar</button>
+          </div>
+          <p class="il-error il-comment__edit-error" hidden></p>
+        </div>
+        <div class="il-comment__actions">
+          <button type="button" class="il-react il-react--sm il-like ${liked ? "is-active" : ""}" data-clike="${esc(c.id)}" aria-pressed="${liked}" aria-label="Me gusta">
+            <span class="il-react__icon">${liked ? "♥" : "♡"}</span>
+            <span class="il-react__label">${isReply ? "" : "Me gusta"}</span>
+            <span class="il-react__count">${Number(c.likesCount) || 0}</span>
+          </button>
+          <button type="button" class="il-react il-react--sm il-dislike ${disliked ? "is-active" : ""}" data-cdislike="${esc(c.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
+            <span class="il-react__icon">${disliked ? "▾" : "▿"}</span>
+            <span class="il-react__label">${isReply ? "" : "No me gusta"}</span>
+            <span class="il-react__count">${Number(c.dislikesCount) || 0}</span>
+          </button>
+          <button type="button" class="btn btn--ghost btn--sm" data-creply="${esc(c.id)}">Responder</button>
+          ${
+            mine
+              ? `<button type="button" class="btn btn--ghost btn--sm" data-cedit="${esc(c.id)}">Editar</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-cdelete="${esc(c.id)}">Eliminar</button>`
+              : ""
+          }
+        </div>
+      </div>`;
   }
 
   function renderCommentsList() {
     const list = $("#comments-list");
-    const meta = $("#cfilter-meta");
     if (!list) return;
-    const esc = M().escapeHtml;
-    const uid = user?.uid || "";
-    const items = filteredComments();
-    if (meta) {
-      meta.textContent = commentsRaw.length
-        ? `Mostrando ${items.length} de ${commentsRaw.length}`
-        : "";
-    }
-    if (!commentsRaw.length) {
+    const items = commentsRaw;
+    if (!items.length) {
       list.innerHTML = `<div class="il-empty">Sé el primero en comentar.</div>`;
       return;
     }
-    if (!items.length) {
-      list.innerHTML = `<div class="il-empty">No hay comentarios con esos filtros.</div>`;
-      return;
-    }
-    list.innerHTML = items
-      .map((c) => {
-        const liked = Array.isArray(c.likedBy) && uid && c.likedBy.includes(uid);
-        const disliked = Array.isArray(c.dislikedBy) && uid && c.dislikedBy.includes(uid);
-        const mine = c.autorUid === uid;
+    const threads = buildCommentThreads(items);
+    list.innerHTML = threads
+      .map((root) => {
+        const replies = Array.isArray(root._replies) ? root._replies : [];
         return `
-        <div class="il-comment" data-id="${esc(c.id)}" data-rol="${esc(inferCommentRol(c))}" data-grado="${esc(inferCommentGrado(c))}">
-          <div class="il-comment__top">
-            <div class="il-comment__who">
-              ${driveAvatarHtml(c.autorFotoUrl || (mine ? perfil?.fotoUrl : ""), c.autorLabel || "Usuario", {
-                sm: true,
-                email: c.autorEmail || (mine ? user?.email || perfil?.email : "") || "",
-                uid: c.autorUid || "",
-              })}
-              <strong>${esc(c.autorLabel || "Usuario")}</strong>
-            </div>
-            ${
-              mine
-                ? `<div class="il-comment__owner">
-              <button type="button" class="btn btn--ghost btn--sm" data-cedit="${esc(c.id)}">Editar</button>
-              <button type="button" class="btn btn--ghost btn--sm" data-cdelete="${esc(c.id)}">Eliminar</button>
-            </div>`
-                : ""
-            }
-          </div>
-          <p>${esc(c.texto || "")}</p>
-          <time>${esc(formatFecha(c.updatedAt || c.createdAt))}${c.updatedAt && c.updatedAt !== c.createdAt ? " · editado" : ""}</time>
-          <div class="il-comment__actions">
-            <button type="button" class="il-react il-react--sm il-like ${liked ? "is-active" : ""}" data-clike="${esc(c.id)}" aria-pressed="${liked}" aria-label="Me gusta">
-              <span class="il-react__icon">${liked ? "♥" : "♡"}</span>
-              <span class="il-react__label">Me gusta</span>
-              <span class="il-react__count">${Number(c.likesCount) || 0}</span>
-            </button>
-            <button type="button" class="il-react il-react--sm il-dislike ${disliked ? "is-active" : ""}" data-cdislike="${esc(c.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
-              <span class="il-react__icon">${disliked ? "▾" : "▿"}</span>
-              <span class="il-react__label">No me gusta</span>
-              <span class="il-react__count">${Number(c.dislikesCount) || 0}</span>
-            </button>
-          </div>
+        <div class="il-thread">
+          ${renderOneComment(root, { isReply: false })}
+          ${
+            replies.length
+              ? `<div class="il-thread__replies">${replies.map((r) => renderOneComment(r, { isReply: true })).join("")}</div>`
+              : ""
+          }
         </div>`;
       })
       .join("");
-  }
-
-  function resetCommentFilters() {
-    commentFilters = { rol: "", usuario: "", grado: "" };
-    $$("[data-cfilter-rol]").forEach((btn) => {
-      btn.classList.toggle("is-active", btn.getAttribute("data-cfilter-rol") === "");
-    });
-    const userInput = $("#cfilter-usuario");
-    const gradoSel = $("#cfilter-grado");
-    if (userInput) userInput.value = "";
-    if (gradoSel) gradoSel.value = "";
   }
 
   function driveAvatarHtml(fotoUrl, nombre, opts = {}) {
@@ -234,6 +287,7 @@
     const dialog = document.createElement("dialog");
     dialog.id = "il-avatar-zoom";
     dialog.className = "il-avatar-zoom";
+    dialog.style.zIndex = "10000";
     dialog.innerHTML = `
       <div class="il-avatar-zoom__card">
         <button type="button" class="il-avatar-zoom__close" data-avatar-close aria-label="Cerrar">×</button>
@@ -640,13 +694,26 @@
     if (!list) return;
     const esc = M().escapeHtml;
     const uid = user?.uid || "";
+    const meta = $("#ffilter-meta");
+    const items = filteredPosts();
+
+    if (meta) {
+      meta.textContent = posts.length
+        ? `Mostrando ${items.length} de ${posts.length}`
+        : "";
+    }
 
     if (!posts.length) {
       list.innerHTML = `<div class="il-empty">Aún no hay publicaciones. ¡Sé el primero en compartir!</div>`;
       return;
     }
 
-    list.innerHTML = posts
+    if (!items.length) {
+      list.innerHTML = `<div class="il-empty">No hay publicaciones con esos filtros.</div>`;
+      return;
+    }
+
+    list.innerHTML = items
       .map((p) => {
         const liked = Array.isArray(p.likedBy) && uid && p.likedBy.includes(uid);
         const disliked = Array.isArray(p.dislikedBy) && uid && p.dislikedBy.includes(uid);
@@ -696,10 +763,28 @@
       .join("");
   }
 
+  function syncCommentHijoSelect() {
+    const wrap = $("#comment-hijo-wrap");
+    const sel = $("#comment-hijo");
+    if (!wrap || !sel) return;
+    if (perfil?.rol !== "padre" || !Array.isArray(perfil.hijos) || !perfil.hijos.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    sel.innerHTML = perfil.hijos
+      .map(
+        (h, i) =>
+          `<option value="${i}">${M().escapeHtml(h.nombre)} · ${M().escapeHtml(h.grado)}</option>`
+      )
+      .join("");
+  }
+
   function openComments(postId) {
     openCommentsPostId = postId;
     commentsRaw = [];
-    resetCommentFilters();
+    clearReplyTarget();
+    syncCommentHijoSelect();
     const dialog = $("#modal-comments");
     const title = $("#modal-comments-title");
     const post = posts.find((p) => p.id === postId);
@@ -708,7 +793,6 @@
     if (commentsUnsub) commentsUnsub();
     commentsUnsub = FB().watchComentarios(postId, (items) => {
       commentsRaw = items || [];
-      syncCommentGradoOptions();
       renderCommentsList();
     });
     if (typeof dialog.showModal === "function") dialog.showModal();
@@ -723,6 +807,7 @@
     }
     openCommentsPostId = null;
     commentsRaw = [];
+    clearReplyTarget();
     if (dialog?.open) dialog.close();
     else dialog?.removeAttribute("open");
   }
@@ -771,18 +856,66 @@
     else dialog.setAttribute("open", "");
   }
 
-  function openEditCommentModal(commentId) {
+  function openEditCommentInline(commentId) {
+    const box = $(`[data-cedit-box="${commentId}"]`);
+    const textEl = $(`[data-ctext="${commentId}"]`);
     const c = commentsRaw.find((x) => x.id === commentId);
-    if (!c) return;
-    const idEl = $("#edit-comment-id");
-    const textEl = $("#edit-comment-text");
-    if (idEl) idEl.value = commentId;
-    if (textEl) textEl.value = c.texto || "";
-    setError("#edit-comment-error", "");
-    const dialog = $("#modal-edit-comment");
-    if (!dialog) return;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
+    if (!box || !c) return;
+    // Cierra otras ediciones abiertas
+    $$("[data-cedit-box]").forEach((el) => {
+      el.hidden = true;
+    });
+    $$("[data-ctext]").forEach((el) => {
+      el.hidden = false;
+    });
+    const ta = box.querySelector("textarea");
+    if (ta) ta.value = c.texto || "";
+    const err = box.querySelector(".il-comment__edit-error");
+    if (err) {
+      err.hidden = true;
+      err.textContent = "";
+    }
+    if (textEl) textEl.hidden = true;
+    box.hidden = false;
+    ta?.focus();
+  }
+
+  function cancelEditCommentInline(commentId) {
+    const box = $(`[data-cedit-box="${commentId}"]`);
+    const textEl = $(`[data-ctext="${commentId}"]`);
+    if (box) box.hidden = true;
+    if (textEl) textEl.hidden = false;
+  }
+
+  async function saveEditCommentInline(commentId) {
+    if (!openCommentsPostId || !commentId) return;
+    const box = $(`[data-cedit-box="${commentId}"]`);
+    const ta = box?.querySelector("textarea");
+    const err = box?.querySelector(".il-comment__edit-error");
+    const texto = ta?.value.trim() || "";
+    if (!texto) {
+      if (err) {
+        err.hidden = false;
+        err.textContent = "El comentario no puede quedar vacío.";
+      }
+      return;
+    }
+    try {
+      await FB().updateComentario(openCommentsPostId, commentId, texto);
+      cancelEditCommentInline(commentId);
+    } catch (e) {
+      if (err) {
+        err.hidden = false;
+        err.textContent = e.message || "No se pudo editar.";
+      } else {
+        alert(e.message || "No se pudo editar.");
+      }
+    }
+  }
+
+  function openEditCommentModal(commentId) {
+    // Compatibilidad: edición en línea dentro del modal de comentarios
+    openEditCommentInline(commentId);
   }
 
   async function enterApp() {
@@ -1254,6 +1387,7 @@
           imagenDrive: form.imagenDrive.value.trim(),
           autorLabel: label,
           autorRol: perfil.rol,
+          autorGrado: postAutorGrado(perfil, hijoIndex),
           autorFotoUrl: perfil.fotoUrl || "",
           autorEmail: user?.email || perfil.email || "",
         };
@@ -1337,7 +1471,17 @@
     $("#comments-list")?.addEventListener("click", async (e) => {
       const editC = e.target.closest("[data-cedit]");
       if (editC) {
-        openEditCommentModal(editC.getAttribute("data-cedit"));
+        openEditCommentInline(editC.getAttribute("data-cedit"));
+        return;
+      }
+      const cancelEdit = e.target.closest("[data-cedit-cancel]");
+      if (cancelEdit) {
+        cancelEditCommentInline(cancelEdit.getAttribute("data-cedit-cancel"));
+        return;
+      }
+      const saveEdit = e.target.closest("[data-cedit-save]");
+      if (saveEdit) {
+        await saveEditCommentInline(saveEdit.getAttribute("data-cedit-save"));
         return;
       }
       const delC = e.target.closest("[data-cdelete]");
@@ -1347,9 +1491,19 @@
         if (!confirm("¿Eliminar este comentario?")) return;
         try {
           await FB().deleteComentario(openCommentsPostId, id);
+          if (replyTarget && (replyTarget.rootId === id || replyTarget.replyToId === id)) {
+            clearReplyTarget();
+          }
         } catch (err) {
           alert(err.message || "No se pudo eliminar.");
         }
+        return;
+      }
+      const replyBtn = e.target.closest("[data-creply]");
+      if (replyBtn) {
+        const id = replyBtn.getAttribute("data-creply");
+        const comment = commentsRaw.find((x) => x.id === id);
+        if (comment) setReplyTarget(comment);
         return;
       }
       const likeBtn = e.target.closest("[data-clike]");
@@ -1375,72 +1529,151 @@
       }
     });
 
+    $("#btn-cancel-reply")?.addEventListener("click", () => clearReplyTarget());
+
     $("#form-comment")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const texto = $("#comment-text")?.value.trim();
       if (!texto || !openCommentsPostId || !perfil) return;
       try {
-        await FB().addComentario(openCommentsPostId, texto, {
-          autorLabel: autorLabel(perfil),
+        let hijoIndex = 0;
+        if (perfil?.rol === "padre") {
+          hijoIndex = Number($("#comment-hijo")?.value || 0);
+        }
+        const meta = {
+          autorLabel: autorLabel(perfil, { hijoIndex }),
           autorUid: user.uid,
           autorRol: perfil.rol || "",
-          autorGrado: commentAutorGrado(perfil),
+          autorGrado: postAutorGrado(perfil, hijoIndex),
           autorNombre: perfil.nombres || "",
           autorApellidos: perfil.apellidos || "",
           autorFotoUrl: perfil.fotoUrl || "",
           autorEmail: user?.email || perfil.email || "",
-        });
+        };
+        if (replyTarget) {
+          meta.parentId = replyTarget.rootId;
+          meta.replyToLabel = replyTarget.replyToLabel;
+          meta.replyToUid = replyTarget.replyToUid;
+        }
+        await FB().addComentario(openCommentsPostId, texto, meta);
         $("#comment-text").value = "";
+        clearReplyTarget();
       } catch (err) {
         alert(err.message || "No se pudo comentar.");
       }
     });
 
-    document.querySelectorAll("[data-cfilter-rol]").forEach((btn) => {
+    document.querySelectorAll("[data-ffilter-rol]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        commentFilters.rol = btn.getAttribute("data-cfilter-rol") || "";
-        $$("[data-cfilter-rol]").forEach((b) => {
+        feedFilters.rol = btn.getAttribute("data-ffilter-rol") || "";
+        $$("[data-ffilter-rol]").forEach((b) => {
           b.classList.toggle("is-active", b === btn);
         });
-        renderCommentsList();
+        renderFeed();
       });
     });
-    $("#cfilter-usuario")?.addEventListener("input", (e) => {
-      commentFilters.usuario = e.target.value || "";
-      renderCommentsList();
-    });
-    $("#cfilter-grado")?.addEventListener("change", (e) => {
-      commentFilters.grado = e.target.value || "";
-      renderCommentsList();
-    });
 
-    /* Drive play */
+    /* Drive play: video nativo en el feed; iframe en modal grande */
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-drive-play]");
       if (!btn) return;
+      e.preventDefault();
       const wrap = btn.closest(".il-media--drive");
       const id = wrap?.getAttribute("data-drive-id");
-      if (!wrap || !id || wrap.classList.contains("is-playing")) return;
-      wrap.classList.add("is-playing");
-      const key = window.INMALINK_FIREBASE_CONFIG?.apiKey || "";
-      const mediaUrl = key
-        ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(key)}`
-        : "";
-      if (mediaUrl) {
-        wrap.innerHTML = `<video class="il-drive-video" controls autoplay playsinline src="${mediaUrl}"></video>`;
-        const video = wrap.querySelector("video");
-        video?.addEventListener(
-          "error",
-          () => {
-            wrap.innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview?autoplay=1" title="Video Drive" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-          },
-          { once: true }
-        );
-        video?.play?.()?.catch?.(() => {});
-      } else {
-        wrap.innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview?autoplay=1" title="Video Drive" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+      if (!wrap || !id) return;
+      if (wrap.classList.contains("is-playing") && wrap.querySelector("video")) return;
+
+      const thumb = btn.querySelector(".il-drive-poster__img");
+      const posterSrc = thumb?.currentSrc || thumb?.getAttribute("src") || "";
+      playInmaDrive(wrap, id, posterSrc);
+    });
+  }
+
+  function ensureIlDriveModal() {
+    let dialog = document.getElementById("il-modal-drive-player");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "il-modal-drive-player";
+    dialog.className = "il-modal il-modal--drive-player";
+    dialog.innerHTML = `
+      <div class="il-drive-player">
+        <header class="il-drive-player__head">
+          <strong>Video de Drive</strong>
+          <button type="button" class="il-drive-player__close" data-il-drive-close aria-label="Cerrar">×</button>
+        </header>
+        <div class="il-drive-player__frame" id="il-drive-player-frame"></div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    const close = () => {
+      const frame = dialog.querySelector("#il-drive-player-frame");
+      if (frame) frame.innerHTML = "";
+      if (dialog.open) dialog.close();
+      else dialog.removeAttribute("open");
+    };
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog || e.target.closest("[data-il-drive-close]")) {
+        e.preventDefault();
+        close();
       }
     });
+    return dialog;
+  }
+
+  function openIlDriveModal(id) {
+    const dialog = ensureIlDriveModal();
+    const frame = dialog.querySelector("#il-drive-player-frame");
+    if (!frame || !id) return;
+    frame.innerHTML = `<iframe src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview" title="Video Drive" allow="autoplay; encrypted-media; fullscreen" allowfullscreen loading="eager"></iframe>`;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function ilDrivePosterHtml(id, posterSrc) {
+    const img = posterSrc
+      ? `<img class="il-drive-poster__img" src="${String(posterSrc).replace(/"/g, "&quot;")}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+      : "";
+    return `
+      <button type="button" class="il-drive-poster" data-drive-play aria-label="Reproducir video">
+        ${img}
+        <span class="il-drive-poster__play" aria-hidden="true">▶</span>
+        <span class="il-drive-poster__label">Drive · Toca para ver</span>
+      </button>
+    `;
+  }
+
+  function playInmaDrive(wrap, id, posterSrc) {
+    const key = window.INMALINK_FIREBASE_CONFIG?.apiKey || "";
+    const mediaUrl = key
+      ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(key)}`
+      : "";
+
+    if (mediaUrl) {
+      wrap.classList.add("is-playing");
+      wrap.innerHTML = `<video class="il-drive-video" controls autoplay playsinline preload="auto" ${posterSrc ? `poster="${String(posterSrc).replace(/"/g, "&quot;")}"` : ""} src="${mediaUrl}"></video>`;
+      const video = wrap.querySelector("video");
+      if (!video) return;
+      let fellBack = false;
+      const fallback = () => {
+        if (fellBack) return;
+        fellBack = true;
+        wrap.classList.remove("is-playing");
+        wrap.innerHTML = ilDrivePosterHtml(id, posterSrc);
+        openIlDriveModal(id);
+      };
+      video.addEventListener("error", fallback, { once: true });
+      video.play?.()?.catch?.(() => {});
+      window.setTimeout(() => {
+        if (fellBack) return;
+        if (video.readyState >= 2 || video.currentTime > 0) return;
+        if (!video.paused && video.readyState >= 1) return;
+        fallback();
+      }, 4000);
+      return;
+    }
+
+    wrap.classList.remove("is-playing");
+    openIlDriveModal(id);
   }
 
   async function boot() {

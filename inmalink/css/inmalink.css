@@ -560,6 +560,7 @@ textarea {
   padding: 0;
   background: transparent;
   max-width: calc(100vw - 1.5rem);
+  z-index: 10000;
 }
 
 .il-avatar-zoom::backdrop {
@@ -1183,6 +1184,8 @@ textarea {
   color: #fff;
   display: grid;
   place-items: center;
+  padding: 0;
+  margin: 0;
 }
 
 .il-drive-poster__img {
@@ -1191,6 +1194,14 @@ textarea {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.il-drive-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(15, 23, 42, 0.42) 100%);
+  pointer-events: none;
 }
 
 .il-drive-poster__play {
@@ -1205,6 +1216,7 @@ textarea {
   color: var(--blue-deep);
   font-size: 1.1rem;
   font-weight: 800;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .il-drive-poster__label {
@@ -1217,6 +1229,74 @@ textarea {
   font-weight: 700;
   text-align: center;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.il-modal--drive-player {
+  width: min(96vw, 720px);
+  max-height: 92vh;
+  background: transparent;
+  padding: 0;
+}
+
+.il-modal--drive-player::backdrop {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.il-drive-player {
+  background: #0b1220;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.il-drive-player__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: #111827;
+  color: #fff;
+}
+
+.il-drive-player__head strong {
+  font-size: 0.9rem;
+}
+
+.il-drive-player__close {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.il-drive-player__frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  background: #000;
+}
+
+.il-drive-player__frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .il-drive-player__frame {
+    aspect-ratio: auto;
+    height: min(72vh, 540px);
+  }
 }
 
 .il-modal {
@@ -1286,6 +1366,12 @@ textarea {
   border-radius: 14px;
   background: #f4f8fc;
   border: 1px solid var(--line);
+}
+
+.il-cfilters--feed {
+  margin: 0 0 1rem;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(0, 61, 120, 0.05);
 }
 
 .il-cfilters__label {
@@ -1359,22 +1445,11 @@ textarea {
 
 .il-comments {
   display: grid;
-  gap: 0.65rem;
-  max-height: 40vh;
+  gap: 0.75rem;
+  max-height: min(48vh, 380px);
   overflow: auto;
-  margin: 0.5rem 0 0.75rem;
-}
-
-.il-comment {
-  background: var(--blue-soft);
-  border-radius: 12px;
-  padding: 0.65rem 0.75rem;
-}
-
-.il-comment strong {
-  display: block;
-  color: var(--blue-deep);
-  font-size: 0.88rem;
+  margin: 0.35rem 0 0.85rem;
+  padding-right: 0.15rem;
 }
 
 .il-comment p {
@@ -1400,11 +1475,63 @@ textarea {
   gap: 0.5rem;
 }
 
+.il-comment__meta {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.il-comment__author {
+  display: block;
+  color: var(--blue-deep);
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.il-comment__who time {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .il-comment__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.45rem;
+  align-items: center;
+}
+
+.il-comment__edit {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.il-comment__edit[hidden] {
+  display: none !important;
+}
+
+.il-comment__edit textarea {
+  width: 100%;
+  border: 1.5px solid rgba(0, 85, 164, 0.18);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  resize: vertical;
+  min-height: 4.5rem;
+  font: inherit;
+}
+
+.il-comment__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.il-comment__text[hidden] {
+  display: none !important;
 }
 
 .il-react--sm {
@@ -1414,6 +1541,71 @@ textarea {
 
 .il-react--sm .il-react__icon {
   font-size: 0.85rem;
+}
+
+.il-thread {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.il-thread__replies {
+  display: grid;
+  gap: 0.45rem;
+  margin-left: 1.15rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid rgba(0, 85, 164, 0.16);
+}
+
+.il-comment {
+  background: #f7fbff;
+  border-radius: 14px;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 85, 164, 0.08);
+}
+
+.il-comment--reply {
+  background: #fff;
+  padding: 0.65rem 0.7rem;
+}
+
+.il-comment--reply .il-comment__actions {
+  margin-top: 0.4rem;
+}
+
+.il-comment--reply .il-react__label:empty {
+  display: none;
+}
+
+.il-comment__reply-to {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.il-comment__reply-to strong {
+  color: var(--blue-deep);
+  font-weight: 700;
+}
+
+.il-reply-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: var(--blue-soft);
+  border: 1px solid rgba(0, 85, 164, 0.12);
+}
+
+.il-reply-banner p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--blue-deep);
+}
+
+.il-reply-banner[hidden] {
+  display: none !important;
 }
 
 .il-comment-form {
