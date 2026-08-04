@@ -119,6 +119,14 @@ function onAuth(callback) {
   });
 }
 
+async function authStateReady() {
+  await initPromise;
+  if (!auth) return;
+  if (typeof auth.authStateReady === "function") {
+    await auth.authStateReady();
+  }
+}
+
 async function getPerfil(uid) {
   await initPromise;
   if (!db || !uid) return null;
@@ -443,6 +451,7 @@ window.InmaLinkFirebase = {
   },
   signInWithGoogle,
   handleRedirectResult,
+  authStateReady,
   logOut,
   onAuth,
   getPerfil,

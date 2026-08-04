@@ -139,6 +139,77 @@ textarea {
   display: none !important;
 }
 
+.il-boot {
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  min-height: 100dvh;
+}
+
+.il-boot__card {
+  width: min(100%, 340px);
+  text-align: center;
+  padding: 1.5rem 1.2rem;
+}
+
+.il-boot__logo {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 0.85rem;
+  border-radius: 50%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgba(0, 61, 120, 0.22));
+  animation: ilBootPulse 1.4s ease-in-out infinite;
+}
+
+.il-boot__eyebrow {
+  margin: 0;
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.il-boot__title {
+  display: block;
+  margin: 0.35rem 0 0.25rem;
+  color: var(--blue-deep);
+  font-size: 1.35rem;
+}
+
+.il-boot__lead {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.il-boot__spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 85, 164, 0.18);
+  border-top-color: var(--blue);
+  animation: ilBootSpin 0.7s linear infinite;
+}
+
+@keyframes ilBootSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ilBootPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .il-boot__logo,
+  .il-boot__spinner {
+    animation: none;
+  }
+}
+
 .il-login {
   display: grid;
   place-items: center;

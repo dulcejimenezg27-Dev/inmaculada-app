@@ -43,11 +43,38 @@
   let user = null;
   let perfil = null;
   let posts = [];
+  let postsUnsub = null;
   let commentsUnsub = null;
   let openCommentsPostId = null;
   let commentsRaw = [];
   let feedFilters = { rol: "" };
   let replyTarget = null; // { rootId, replyToId, replyToLabel, replyToUid }
+  let authHandledUid = undefined; // undefined = aún no; null = sin sesión; string = uid
+  let authBusy = false;
+  const PERFIL_CACHE_KEY = "inmalink_perfil_cache";
+
+  function cachePerfilLocal(p) {
+    try {
+      if (!p?.uid || !p?.rol) {
+        sessionStorage.removeItem(PERFIL_CACHE_KEY);
+        return;
+      }
+      sessionStorage.setItem(PERFIL_CACHE_KEY, JSON.stringify(p));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function readCachedPerfil(uid) {
+    try {
+      const raw = sessionStorage.getItem(PERFIL_CACHE_KEY);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p?.uid === uid && p?.rol ? p : null;
+    } catch {
+      return null;
+    }
+  }
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -927,6 +954,7 @@
         console.warn("No se pudo guardar el correo en el perfil", err);
       }
     }
+    cachePerfilLocal(perfil);
     $("#user-chip-label").textContent = autorLabel(perfil);
     $("#top-user-name").textContent = `${perfil.nombres || ""} ${perfil.apellidos || ""}`.trim();
     const emailEl = $("#top-user-email");
@@ -934,7 +962,11 @@
     syncComposeAvatar();
     syncPublishHijoSelect();
     showScreen("app");
-    FB().watchPosts((items) => {
+    if (postsUnsub) {
+      postsUnsub();
+      postsUnsub = null;
+    }
+    postsUnsub = FB().watchPosts((items) => {
       posts = items;
       renderFeed();
     });
@@ -1148,31 +1180,75 @@
   }
 
   async function afterAuth(u) {
+    const nextUid = u?.uid || null;
+    if (authBusy) return;
+    // Misma sesión ya lista: no reprocesar (vuelves de la app pública, etc.)
+    if (authHandledUid === nextUid && (nextUid === null || perfil?.rol)) {
+      if (nextUid && perfil?.rol) showScreen("app");
+      else if (!nextUid) showScreen("login");
+      return;
+    }
+
+    authBusy = true;
+    authHandledUid = nextUid;
     user = u;
-    if (!u) {
-      perfil = null;
-      showScreen("login");
-      return;
-    }
     try {
-      perfil = await FB().getPerfil(u.uid);
-    } catch (err) {
-      console.error(err);
-      setError("#login-error", "No se pudo cargar el perfil. Revisa las reglas de Firestore.");
-      showScreen("login");
-      return;
+      if (!u) {
+        perfil = null;
+        cachePerfilLocal(null);
+        if (postsUnsub) {
+          postsUnsub();
+          postsUnsub = null;
+        }
+        showScreen("login");
+        return;
+      }
+
+      // Sesión restaurada: spinner, nunca el login de Google
+      showScreen("boot");
+      const cached = readCachedPerfil(u.uid);
+      if (cached) {
+        perfil = cached;
+        await enterApp();
+        // Refresca perfil en segundo plano
+        FB()
+          .getPerfil(u.uid)
+          .then((fresh) => {
+            if (!fresh?.rol || fresh.uid !== user?.uid) return;
+            perfil = fresh;
+            cachePerfilLocal(fresh);
+            $("#user-chip-label").textContent = autorLabel(perfil);
+            $("#top-user-name").textContent = `${perfil.nombres || ""} ${perfil.apellidos || ""}`.trim();
+            syncComposeAvatar();
+            syncPublishHijoSelect();
+          })
+          .catch(() => {});
+        return;
+      }
+      try {
+        perfil = await FB().getPerfil(u.uid);
+      } catch (err) {
+        console.error(err);
+        setError("#login-error", "No se pudo cargar el perfil. Revisa las reglas de Firestore.");
+        showScreen("login");
+        return;
+      }
+      if (!perfil?.rol) {
+        cachePerfilLocal(null);
+        $("#perfil-nombres").value = firstWord(u.displayName) || "";
+        const parts = String(u.displayName || "").trim().split(/\s+/);
+        if (parts.length > 1) $("#perfil-apellidos").value = parts.slice(1).join(" ");
+        setOnboardingStep(1);
+        updateObPreview();
+        syncPerfilFotoPreview();
+        showScreen("onboarding");
+        return;
+      }
+      cachePerfilLocal(perfil);
+      await enterApp();
+    } finally {
+      authBusy = false;
     }
-    if (!perfil?.rol) {
-      $("#perfil-nombres").value = firstWord(u.displayName) || "";
-      const parts = String(u.displayName || "").trim().split(/\s+/);
-      if (parts.length > 1) $("#perfil-apellidos").value = parts.slice(1).join(" ");
-      setOnboardingStep(1);
-      updateObPreview();
-      syncPerfilFotoPreview();
-      showScreen("onboarding");
-      return;
-    }
-    await enterApp();
   }
 
   function bind() {
@@ -1283,6 +1359,7 @@
       try {
         const data = collectEditPerfil();
         perfil = await FB().savePerfil(user.uid, data);
+        cachePerfilLocal(perfil);
         try {
           await FB().updateOwnAutorMeta({
             fotoUrl: perfil.fotoUrl || "",
@@ -1330,6 +1407,7 @@
         const data = collectOnboarding();
         data.createdAt = new Date().toISOString();
         perfil = await FB().savePerfil(user.uid, data);
+        cachePerfilLocal(perfil);
         await enterApp();
       } catch (err) {
         setError("#onboarding-error", err.message || "No se pudo guardar el perfil.");
@@ -1341,10 +1419,20 @@
         return;
       }
       try {
+        authHandledUid = undefined;
+        perfil = null;
+        user = null;
+        cachePerfilLocal(null);
+        if (postsUnsub) {
+          postsUnsub();
+          postsUnsub = null;
+        }
+        showScreen("boot");
         await FB().logOut();
       } catch (err) {
         console.error(err);
         alert("No se pudo cerrar la sesión.");
+        showScreen("login");
       }
     });
 
@@ -1678,10 +1766,10 @@
 
   async function boot() {
     bind();
+    showScreen("boot");
     if (!window.InmaLinkFirebase) {
       await new Promise((resolve) => {
         window.addEventListener("inmalink-firebase-ready", resolve, { once: true });
-        // por si el evento ya pasó
         window.setTimeout(resolve, 4000);
       });
     }
@@ -1691,6 +1779,11 @@
       return;
     }
     await FB().ready;
+    try {
+      await FB().authStateReady();
+    } catch (err) {
+      console.warn(err);
+    }
     await FB().handleRedirectResult();
     FB().onAuth(afterAuth);
   }
