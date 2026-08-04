@@ -1,5 +1,5 @@
 /* Service Worker — InmaLink */
-const CACHE_NAME = "inmalink-v22";
+const CACHE_NAME = "inmalink-v24";
 const ASSETS = [
   "./index.html",
   "./css/inmalink.css",
