@@ -90,6 +90,17 @@
             <span>Apellidos</span>
             <input type="text" id="perfil-apellidos" required maxlength="80" autocomplete="family-name" placeholder="Pérez Gómez" />
           </label>
+          <div class="ob-foto">
+            <div class="ob-foto__preview" id="perfil-foto-preview">
+              <img id="perfil-foto-img" alt="" hidden referrerpolicy="no-referrer" />
+              <span class="ob-foto__fallback" id="perfil-foto-fallback" aria-hidden="true">?</span>
+            </div>
+            <label class="ob-field ob-foto__field">
+              <span>Foto de perfil (enlace Drive, opcional)</span>
+              <input type="text" id="perfil-foto" inputmode="url" maxlength="500" placeholder="https://drive.google.com/file/d/..." />
+            </label>
+          </div>
+          <p class="il-help">En Drive: comparte como «Cualquier persona con el enlace» → Visor y pega el enlace.</p>
           <button type="button" class="btn btn--primary btn--block ob-next" data-ob-next="2">Continuar</button>
         </div>
 
@@ -212,13 +223,17 @@
   <section class="il-screen il-app" data-screen="app" hidden>
     <header class="il-top">
       <div class="il-top__brand">
-        <img src="/image/logoInmaculada.jpg" alt="" width="40" height="40" />
-        <div>
+        <img src="/image/InmaLinkLogo-fab.png" alt="InmaLink" width="40" height="40" />
+        <div class="il-top__text">
           <strong>InmaLink</strong>
           <span id="top-user-name">—</span>
+          <span class="il-top__email" id="top-user-email"></span>
         </div>
       </div>
-      <button type="button" class="btn btn--ghost btn--sm" id="btn-logout">Salir</button>
+      <div class="il-top__actions">
+        <a class="btn btn--ghost btn--sm" href="/" id="btn-back-app">Volver a la App</a>
+        <button type="button" class="il-signout" id="btn-logout">Cerrar sesión</button>
+      </div>
     </header>
 
     <main id="main" class="il-main">
@@ -230,7 +245,13 @@
         </p>
       </aside>
       <div class="il-compose">
-        <p class="il-compose__who" id="user-chip-label">—</p>
+        <div class="il-compose__row">
+          <div class="il-compose__avatar" id="compose-avatar"></div>
+          <div class="il-compose__meta">
+            <p class="il-compose__who" id="user-chip-label">—</p>
+            <button type="button" class="il-link" id="btn-edit-perfil">Editar perfil</button>
+          </div>
+        </div>
         <button type="button" class="btn btn--accent btn--block" id="btn-new-post">
           Quiero hacer una publicación
         </button>
@@ -239,10 +260,11 @@
     </main>
   </section>
 
-  <!-- Modal publicar -->
+  <!-- Modal publicar / editar -->
   <dialog class="il-modal" id="modal-publish">
     <form class="il-modal__form" id="form-publish">
-      <h2>Nueva publicación</h2>
+      <h2 id="modal-publish-title">Nueva publicación</h2>
+      <input type="hidden" name="recordId" id="publish-record-id" value="" />
       <p class="il-rules__inline">
         Publica con respeto. El mal uso puede causar <strong>bloqueo definitivo</strong>.
       </p>
@@ -277,7 +299,119 @@
       <p class="il-error" id="publish-error" hidden></p>
       <div class="il-modal__actions">
         <button type="button" class="btn btn--ghost" data-close-modal="modal-publish">Cancelar</button>
-        <button type="submit" class="btn btn--primary">Publicar</button>
+        <button type="submit" class="btn btn--primary" id="btn-publish-submit">Publicar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal editar perfil -->
+  <dialog class="il-modal il-modal--perfil" id="modal-edit-perfil">
+    <form class="il-modal__form" id="form-edit-perfil">
+      <h2>Editar perfil</h2>
+      <p class="il-modal__lead">Actualiza tu nombre, foto y los datos de tu rol en la comunidad.</p>
+
+      <label class="ob-field">
+        <span>Nombres</span>
+        <input type="text" id="edit-nombres" required maxlength="80" autocomplete="given-name" />
+      </label>
+      <label class="ob-field">
+        <span>Apellidos</span>
+        <input type="text" id="edit-apellidos" required maxlength="80" autocomplete="family-name" />
+      </label>
+
+      <div class="ob-foto">
+        <div class="ob-foto__preview" id="edit-foto-preview">
+          <img id="edit-foto-img" alt="" hidden referrerpolicy="no-referrer" />
+          <span class="ob-foto__fallback" id="edit-foto-fallback" aria-hidden="true">?</span>
+        </div>
+        <label class="ob-field ob-foto__field">
+          <span>Foto (enlace Drive, opcional)</span>
+          <input type="text" id="edit-foto-url" inputmode="url" maxlength="500" placeholder="https://drive.google.com/file/d/..." />
+        </label>
+      </div>
+      <p class="il-help">Vacío = usar foto de Google si existe.</p>
+
+      <p class="il-hint">Tu rol en el colegio</p>
+      <div class="ob-roles ob-roles--compact" role="radiogroup" aria-label="Tipo de cuenta">
+        <label class="ob-role">
+          <input type="radio" name="edit-rol" value="estudiante" required />
+          <span class="ob-role__card"><span class="ob-role__text"><strong>Estudiante</strong></span></span>
+        </label>
+        <label class="ob-role">
+          <input type="radio" name="edit-rol" value="docente" />
+          <span class="ob-role__card"><span class="ob-role__text"><strong>Docente</strong></span></span>
+        </label>
+        <label class="ob-role">
+          <input type="radio" name="edit-rol" value="padre" />
+          <span class="ob-role__card"><span class="ob-role__text"><strong>Padre / Madre</strong></span></span>
+        </label>
+        <label class="ob-role">
+          <input type="radio" name="edit-rol" value="directivo" />
+          <span class="ob-role__card"><span class="ob-role__text"><strong>Directivo</strong></span></span>
+        </label>
+      </div>
+
+      <div data-edit-rol-fields="estudiante" hidden>
+        <label class="ob-field">
+          <span>Tu grado</span>
+          <select id="edit-grado"></select>
+        </label>
+      </div>
+
+      <div data-edit-rol-fields="docente" hidden>
+        <p class="il-hint">Materias que dictas</p>
+        <div id="edit-materias-list" class="ob-chips"></div>
+        <label class="ob-field">
+          <span>Área principal</span>
+          <select id="edit-area"></select>
+        </label>
+      </div>
+
+      <div data-edit-rol-fields="padre" hidden>
+        <p class="il-hint">Parentesco</p>
+        <div class="ob-parentesco">
+          <label class="ob-pill">
+            <input type="radio" name="edit-parentesco" value="papa" />
+            <span>Papá</span>
+          </label>
+          <label class="ob-pill">
+            <input type="radio" name="edit-parentesco" value="mama" />
+            <span>Mamá</span>
+          </label>
+        </div>
+        <p class="il-hint">Hijos / hijas</p>
+        <div id="edit-hijos-list"></div>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-edit-add-hijo">+ Agregar hijo(a)</button>
+      </div>
+
+      <div data-edit-rol-fields="directivo" hidden>
+        <label class="ob-field">
+          <span>Tu cargo</span>
+          <select id="edit-cargo"></select>
+        </label>
+      </div>
+
+      <p class="il-error" id="edit-perfil-error" hidden></p>
+      <div class="il-modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-edit-perfil">Cancelar</button>
+        <button type="submit" class="btn btn--primary">Guardar cambios</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal editar comentario -->
+  <dialog class="il-modal" id="modal-edit-comment">
+    <form class="il-modal__form" id="form-edit-comment">
+      <h2>Editar comentario</h2>
+      <input type="hidden" id="edit-comment-id" value="" />
+      <label>
+        Comentario
+        <textarea id="edit-comment-text" rows="3" maxlength="500" required></textarea>
+      </label>
+      <p class="il-error" id="edit-comment-error" hidden></p>
+      <div class="il-modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal="modal-edit-comment">Cancelar</button>
+        <button type="submit" class="btn btn--primary">Guardar</button>
       </div>
     </form>
   </dialog>

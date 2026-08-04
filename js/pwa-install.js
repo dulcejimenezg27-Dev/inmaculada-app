@@ -82,9 +82,18 @@
 
   function showInstallBar() {
     if (!installBar || isStandalone || wasInstalled() || wasDismissed()) return;
+    const already = !installBar.hidden && document.body.classList.contains("has-install-bar");
+    const y = window.scrollY || window.pageYOffset || 0;
     syncLabel();
     installBar.hidden = false;
     document.body.classList.add("has-install-bar");
+    // Evita que el padding del topbar en Android “suba” el contenido al aparecer la barra
+    if (!already) {
+      requestAnimationFrame(() => {
+        const extra = window.matchMedia("(max-width: 480px)").matches ? 42 : 0;
+        window.scrollTo(0, y + extra);
+      });
+    }
   }
 
   /** Android/Windows: solo mostrar cuando hay prompt nativo. iOS: siempre (guía). */

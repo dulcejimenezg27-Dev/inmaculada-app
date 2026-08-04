@@ -66,9 +66,23 @@ service cloud.firestore {
 
         allow update: if signedIn()
           && request.resource.data.autorUid == resource.data.autorUid
-          && request.resource.data.texto == resource.data.texto
-          && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['likedBy', 'likesCount', 'dislikedBy', 'dislikesCount']);
+          && (
+            // Autor edita el texto
+            (
+              resource.data.autorUid == request.auth.uid
+              && request.resource.data.texto is string
+              && request.resource.data.texto.size() > 0
+              && request.resource.data.texto.size() <= 500
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['texto', 'updatedAt'])
+            )
+            // Cualquiera: me gusta / no me gusta
+            || (
+              request.resource.data.texto == resource.data.texto
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['likedBy', 'likesCount', 'dislikedBy', 'dislikesCount'])
+            )
+          );
         allow delete: if signedIn() && resource.data.autorUid == request.auth.uid;
       }
     }

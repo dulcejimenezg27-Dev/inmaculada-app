@@ -148,11 +148,29 @@
       .map((c) => {
         const liked = Array.isArray(c.likedBy) && uid && c.likedBy.includes(uid);
         const disliked = Array.isArray(c.dislikedBy) && uid && c.dislikedBy.includes(uid);
+        const mine = c.autorUid === uid;
         return `
         <div class="il-comment" data-id="${esc(c.id)}" data-rol="${esc(inferCommentRol(c))}" data-grado="${esc(inferCommentGrado(c))}">
-          <strong>${esc(c.autorLabel || "Usuario")}</strong>
+          <div class="il-comment__top">
+            <div class="il-comment__who">
+              ${driveAvatarHtml(c.autorFotoUrl || (mine ? perfil?.fotoUrl : ""), c.autorLabel || "Usuario", {
+                sm: true,
+                email: c.autorEmail || (mine ? user?.email || perfil?.email : "") || "",
+                uid: c.autorUid || "",
+              })}
+              <strong>${esc(c.autorLabel || "Usuario")}</strong>
+            </div>
+            ${
+              mine
+                ? `<div class="il-comment__owner">
+              <button type="button" class="btn btn--ghost btn--sm" data-cedit="${esc(c.id)}">Editar</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-cdelete="${esc(c.id)}">Eliminar</button>
+            </div>`
+                : ""
+            }
+          </div>
           <p>${esc(c.texto || "")}</p>
-          <time>${esc(formatFecha(c.createdAt))}</time>
+          <time>${esc(formatFecha(c.updatedAt || c.createdAt))}${c.updatedAt && c.updatedAt !== c.createdAt ? " · editado" : ""}</time>
           <div class="il-comment__actions">
             <button type="button" class="il-react il-react--sm il-like ${liked ? "is-active" : ""}" data-clike="${esc(c.id)}" aria-pressed="${liked}" aria-label="Me gusta">
               <span class="il-react__icon">${liked ? "♥" : "♡"}</span>
@@ -179,6 +197,191 @@
     const gradoSel = $("#cfilter-grado");
     if (userInput) userInput.value = "";
     if (gradoSel) gradoSel.value = "";
+  }
+
+  function driveAvatarHtml(fotoUrl, nombre, opts = {}) {
+    const esc = M().escapeHtml;
+    const escA = M().escapeAttr;
+    const sizeClass = opts.sm ? " il-avatar--sm" : "";
+    const btnClass = opts.sm ? " il-avatar-btn--sm" : "";
+    const email = String(opts.email || "").trim();
+    const uid = String(opts.uid || "").trim();
+    const initials = (() => {
+      const parts = String(nombre || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) return "?";
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    })();
+    const meta = ` data-avatar-zoom data-avatar-name="${escA(nombre || "")}" data-avatar-email="${escA(email)}" data-avatar-uid="${escA(uid)}" aria-label="Ver foto de ${escA(nombre || "usuario")}"`;
+    const raw = String(fotoUrl || "").trim();
+    const candidates = raw && M().driveImageCandidates ? M().driveImageCandidates(raw) : raw ? [raw] : [];
+    if (candidates.length) {
+      const [first, ...rest] = candidates;
+      const large = first.includes("=w")
+        ? first.replace(/=w\d+/, "=w1600")
+        : first;
+      const fb = ` data-fallbacks="${rest.map(escA).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');}})(this)"`;
+      return `<button type="button" class="il-avatar-btn${btnClass}"${meta} data-avatar-src="${escA(large)}" data-avatar-fallbacks="${[first, ...rest].map(escA).join("|")}"><img class="il-avatar" src="${escA(first)}" alt="" loading="lazy" referrerpolicy="no-referrer"${fb} /><span class="il-avatar il-avatar--fallback" hidden aria-hidden="true">${esc(initials)}</span></button>`;
+    }
+    return `<button type="button" class="il-avatar-btn${btnClass}"${meta}><span class="il-avatar il-avatar--fallback${sizeClass}" aria-hidden="true">${esc(initials)}</span></button>`;
+  }
+
+  function ensureAvatarZoom() {
+    if (document.getElementById("il-avatar-zoom")) return;
+    const dialog = document.createElement("dialog");
+    dialog.id = "il-avatar-zoom";
+    dialog.className = "il-avatar-zoom";
+    dialog.innerHTML = `
+      <div class="il-avatar-zoom__card">
+        <button type="button" class="il-avatar-zoom__close" data-avatar-close aria-label="Cerrar">×</button>
+        <img class="il-avatar-zoom__img" id="il-avatar-zoom-img" alt="" referrerpolicy="no-referrer" />
+        <p class="il-avatar-zoom__name" id="il-avatar-zoom-name"></p>
+        <p class="il-avatar-zoom__email" id="il-avatar-zoom-email" hidden></p>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    const img = dialog.querySelector("#il-avatar-zoom-img");
+    const nameEl = dialog.querySelector("#il-avatar-zoom-name");
+    const emailEl = dialog.querySelector("#il-avatar-zoom-email");
+    const close = () => {
+      if (dialog.open) dialog.close();
+      else dialog.removeAttribute("open");
+    };
+    const showEmail = (email) => {
+      if (!emailEl) return;
+      const value = String(email || "").trim();
+      if (!value) {
+        emailEl.hidden = true;
+        emailEl.textContent = "";
+        return;
+      }
+      emailEl.hidden = false;
+      emailEl.textContent = value;
+    };
+    document.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-avatar-close]")) {
+        e.preventDefault();
+        close();
+        return;
+      }
+      const btn = e.target.closest("[data-avatar-zoom]");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const src = btn.getAttribute("data-avatar-src") || "";
+      const name = btn.getAttribute("data-avatar-name") || "";
+      let email = btn.getAttribute("data-avatar-email") || "";
+      const uid = btn.getAttribute("data-avatar-uid") || "";
+      const fallbacks = (btn.getAttribute("data-avatar-fallbacks") || "")
+        .split("|")
+        .filter(Boolean);
+      const list = [src, ...fallbacks].filter(Boolean);
+      if (nameEl) nameEl.textContent = name;
+      showEmail(email);
+      if (img) {
+        if (list.length) {
+          img.hidden = false;
+          let i = 0;
+          img.onerror = () => {
+            i += 1;
+            if (i < list.length) img.src = list[i];
+            else img.hidden = true;
+          };
+          img.src = list[0];
+        } else {
+          img.removeAttribute("src");
+          img.hidden = true;
+        }
+      }
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+
+      // Si el post es viejo y no trae correo, buscarlo en el perfil
+      if (!email && uid && FB()?.getPerfil) {
+        try {
+          const p = await FB().getPerfil(uid);
+          const found = String(p?.email || "").trim();
+          if (found && dialog.open) showEmail(found);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) close();
+    });
+  }
+
+  function syncPerfilFotoPreview() {
+    const typed = $("#perfil-foto")?.value.trim() || "";
+    const raw = typed || user?.photoURL || "";
+    const img = $("#perfil-foto-img");
+    const fallback = $("#perfil-foto-fallback");
+    if (!img || !fallback) return;
+    const names = `${$("#perfil-nombres")?.value || ""} ${$("#perfil-apellidos")?.value || ""}`.trim();
+    const parts = names.split(/\s+/).filter(Boolean);
+    const initials =
+      !parts.length
+        ? "?"
+        : parts.length === 1
+          ? parts[0].slice(0, 2).toUpperCase()
+          : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    fallback.textContent = initials;
+
+    const preview = $("#perfil-foto-preview");
+    if (!raw) {
+      img.hidden = true;
+      img.removeAttribute("src");
+      fallback.hidden = false;
+      if (preview) {
+        preview.removeAttribute("data-avatar-zoom");
+        preview.removeAttribute("data-avatar-src");
+        preview.removeAttribute("data-avatar-fallbacks");
+        preview.removeAttribute("data-avatar-name");
+        preview.removeAttribute("data-avatar-email");
+        preview.removeAttribute("data-avatar-uid");
+        preview.removeAttribute("role");
+        preview.removeAttribute("tabindex");
+        preview.removeAttribute("aria-label");
+      }
+      return;
+    }
+    const candidates = typed
+      ? M().driveImageCandidates?.(raw) || [raw]
+      : [raw];
+    let i = 0;
+    img.hidden = false;
+    fallback.hidden = true;
+    img.onerror = () => {
+      i += 1;
+      if (i < candidates.length) img.src = candidates[i];
+      else {
+        img.hidden = true;
+        fallback.hidden = false;
+      }
+    };
+    img.onload = () => {
+      img.hidden = false;
+      fallback.hidden = true;
+    };
+    img.src = candidates[0];
+    if (preview) {
+      const large = candidates[0].includes("=w")
+        ? candidates[0].replace(/=w\d+/, "=w1600")
+        : candidates[0];
+      preview.setAttribute("data-avatar-zoom", "");
+      preview.setAttribute("data-avatar-src", large);
+      preview.setAttribute("data-avatar-fallbacks", candidates.join("|"));
+      preview.setAttribute("data-avatar-name", names || "Tu foto");
+      preview.setAttribute("data-avatar-email", user?.email || "");
+      preview.setAttribute("data-avatar-uid", user?.uid || "");
+      preview.setAttribute("role", "button");
+      preview.setAttribute("tabindex", "0");
+      preview.setAttribute("aria-label", "Ver foto ampliada");
+    }
   }
 
   function autorLabel(p, opts = {}) {
@@ -385,7 +588,13 @@
     if (!nombres || !apellidos) throw new Error("Escribe nombres y apellidos.");
     if (!rol) throw new Error("Elige el tipo de cuenta.");
 
-    const base = { nombres, apellidos, rol, fotoUrl: user?.photoURL || "" };
+    const driveFoto = $("#perfil-foto")?.value.trim() || "";
+    const base = {
+      nombres,
+      apellidos,
+      rol,
+      fotoUrl: driveFoto || user?.photoURL || "",
+    };
 
     if (rol === "estudiante") {
       const grado = $("#perfil-grado")?.value || "";
@@ -445,11 +654,24 @@
         return `
       <article class="il-post" data-id="${esc(p.id)}">
         <header class="il-post__head">
-          <div>
-            <strong class="il-post__author">${esc(p.autorLabel || "Usuario")}</strong>
-            <time class="il-post__date">${esc(formatFecha(p.createdAt))}</time>
+          <div class="il-post__who">
+            ${driveAvatarHtml(p.autorFotoUrl || (mine ? perfil?.fotoUrl : ""), p.autorLabel || "Usuario", {
+              email: p.autorEmail || (mine ? user?.email || perfil?.email : "") || "",
+              uid: p.autorUid || "",
+            })}
+            <div>
+              <strong class="il-post__author">${esc(p.autorLabel || "Usuario")}</strong>
+              <time class="il-post__date">${esc(formatFecha(p.createdAt))}</time>
+            </div>
           </div>
-          ${mine ? `<button type="button" class="btn btn--ghost btn--sm" data-delete-post="${esc(p.id)}">Eliminar</button>` : ""}
+          ${
+            mine
+              ? `<div class="il-post__owner">
+            <button type="button" class="btn btn--ghost btn--sm" data-edit-post="${esc(p.id)}">Editar</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-delete-post="${esc(p.id)}">Eliminar</button>
+          </div>`
+              : ""
+          }
         </header>
         <h2 class="il-post__title">${esc(p.titulo || "")}</h2>
         <p class="il-post__body">${esc(p.mensaje || "")}</p>
@@ -522,15 +744,274 @@
       .join("");
   }
 
+  function openPublishModal(post = null) {
+    const dialog = $("#modal-publish");
+    const form = $("#form-publish");
+    const title = $("#modal-publish-title");
+    const submit = $("#btn-publish-submit");
+    if (!form || !dialog) return;
+    form.reset();
+    setError("#publish-error", "");
+    syncPublishHijoSelect();
+    if (post) {
+      form.recordId.value = post.id || "";
+      form.titulo.value = post.titulo || "";
+      form.mensaje.value = post.mensaje || "";
+      form.videoYoutube.value = post.videoYoutube || "";
+      form.videoDrive.value = post.videoDrive || "";
+      form.imagenDrive.value = post.imagenDrive || "";
+      if (title) title.textContent = "Editar publicación";
+      if (submit) submit.textContent = "Guardar cambios";
+    } else {
+      form.recordId.value = "";
+      if (title) title.textContent = "Nueva publicación";
+      if (submit) submit.textContent = "Publicar";
+    }
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function openEditCommentModal(commentId) {
+    const c = commentsRaw.find((x) => x.id === commentId);
+    if (!c) return;
+    const idEl = $("#edit-comment-id");
+    const textEl = $("#edit-comment-text");
+    if (idEl) idEl.value = commentId;
+    if (textEl) textEl.value = c.texto || "";
+    setError("#edit-comment-error", "");
+    const dialog = $("#modal-edit-comment");
+    if (!dialog) return;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
   async function enterApp() {
+    // Asegura el correo en el perfil (identidad real, no editable)
+    if (perfil && user?.email && perfil.email !== user.email) {
+      try {
+        perfil = await FB().savePerfil(user.uid, { ...perfil, email: user.email });
+      } catch (err) {
+        console.warn("No se pudo guardar el correo en el perfil", err);
+      }
+    }
     $("#user-chip-label").textContent = autorLabel(perfil);
     $("#top-user-name").textContent = `${perfil.nombres || ""} ${perfil.apellidos || ""}`.trim();
+    const emailEl = $("#top-user-email");
+    if (emailEl) emailEl.textContent = user?.email || "";
+    syncComposeAvatar();
     syncPublishHijoSelect();
     showScreen("app");
     FB().watchPosts((items) => {
       posts = items;
       renderFeed();
     });
+  }
+
+  function syncComposeAvatar() {
+    const wrap = $("#compose-avatar");
+    if (!wrap || !perfil) return;
+    const name = `${perfil.nombres || ""} ${perfil.apellidos || ""}`.trim() || autorLabel(perfil);
+    wrap.innerHTML = driveAvatarHtml(perfil.fotoUrl || "", name, {
+      email: user?.email || perfil.email || "",
+      uid: user?.uid || perfil.uid || "",
+    });
+  }
+
+  function syncEditFotoPreview() {
+    const typed = $("#edit-foto-url")?.value.trim() || "";
+    const raw = typed || user?.photoURL || "";
+    const img = $("#edit-foto-img");
+    const fallback = $("#edit-foto-fallback");
+    if (!img || !fallback) return;
+    const names = `${$("#edit-nombres")?.value || perfil?.nombres || ""} ${$("#edit-apellidos")?.value || perfil?.apellidos || ""}`.trim();
+    const parts = names.split(/\s+/).filter(Boolean);
+    const initials =
+      !parts.length
+        ? "?"
+        : parts.length === 1
+          ? parts[0].slice(0, 2).toUpperCase()
+          : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    fallback.textContent = initials;
+
+    const preview = $("#edit-foto-preview");
+    if (!raw) {
+      img.hidden = true;
+      img.removeAttribute("src");
+      fallback.hidden = false;
+      if (preview) {
+        preview.removeAttribute("data-avatar-zoom");
+        preview.removeAttribute("data-avatar-src");
+        preview.removeAttribute("data-avatar-fallbacks");
+        preview.removeAttribute("data-avatar-name");
+        preview.removeAttribute("data-avatar-email");
+        preview.removeAttribute("data-avatar-uid");
+      }
+      return;
+    }
+    const candidates = typed
+      ? M().driveImageCandidates?.(raw) || [raw]
+      : [raw];
+    let i = 0;
+    img.hidden = false;
+    fallback.hidden = true;
+    img.onerror = () => {
+      i += 1;
+      if (i < candidates.length) img.src = candidates[i];
+      else {
+        img.hidden = true;
+        fallback.hidden = false;
+      }
+    };
+    img.onload = () => {
+      img.hidden = false;
+      fallback.hidden = true;
+    };
+    img.src = candidates[0];
+    if (preview) {
+      const large = candidates[0].includes("=w")
+        ? candidates[0].replace(/=w\d+/, "=w1600")
+        : candidates[0];
+      preview.setAttribute("data-avatar-zoom", "");
+      preview.setAttribute("data-avatar-src", large);
+      preview.setAttribute("data-avatar-fallbacks", candidates.join("|"));
+      preview.setAttribute("data-avatar-name", names || "Tu foto");
+      preview.setAttribute("data-avatar-email", user?.email || perfil?.email || "");
+      preview.setAttribute("data-avatar-uid", user?.uid || perfil?.uid || "");
+      preview.setAttribute("role", "button");
+      preview.setAttribute("tabindex", "0");
+      preview.setAttribute("aria-label", "Ver foto ampliada");
+    }
+  }
+
+  function syncEditRolFields() {
+    const rol = $('input[name="edit-rol"]:checked')?.value || "";
+    $$("[data-edit-rol-fields]").forEach((box) => {
+      box.hidden = box.getAttribute("data-edit-rol-fields") !== rol;
+    });
+  }
+
+  function addEditHijoRow(nombre = "", grado = "") {
+    const wrap = $("#edit-hijos-list");
+    if (!wrap) return;
+    const row = document.createElement("div");
+    row.className = "il-hijo-row";
+    row.innerHTML = `
+      <label class="ob-field">Nombre del hijo(a)
+        <input type="text" name="editHijoNombre" maxlength="80" value="${M().escapeAttr(nombre)}" placeholder="María Gómez" />
+      </label>
+      <label class="ob-field">Grado
+        <select name="editHijoGrado">
+          <option value="">Selecciona</option>
+          ${GRADOS.map((g) => `<option value="${g}"${g === grado ? " selected" : ""}>${g}</option>`).join("")}
+        </select>
+      </label>
+      <button type="button" class="btn btn--ghost btn--sm" data-remove-edit-hijo>Quitar</button>
+    `;
+    wrap.appendChild(row);
+  }
+
+  function collectEditPerfil() {
+    const nombres = $("#edit-nombres")?.value.trim() || "";
+    const apellidos = $("#edit-apellidos")?.value.trim() || "";
+    const rol = $('input[name="edit-rol"]:checked')?.value || "";
+    if (!nombres || !apellidos) throw new Error("Escribe nombres y apellidos.");
+    if (!rol) throw new Error("Elige el tipo de cuenta.");
+
+    const driveFoto = $("#edit-foto-url")?.value.trim() || "";
+    const base = {
+      nombres,
+      apellidos,
+      rol,
+      fotoUrl: driveFoto || user?.photoURL || "",
+      createdAt: perfil?.createdAt || new Date().toISOString(),
+    };
+
+    if (rol === "estudiante") {
+      const grado = $("#edit-grado")?.value || "";
+      if (!grado) throw new Error("El grado es obligatorio.");
+      return { ...base, grado };
+    }
+
+    if (rol === "docente") {
+      const materias = $$('#edit-materias-list input[type="checkbox"]:checked').map((c) => c.value);
+      const areaPrincipal = $("#edit-area")?.value || "";
+      if (!materias.length) throw new Error("Selecciona al menos una materia.");
+      if (!areaPrincipal) throw new Error("Elige el área principal.");
+      if (!materias.includes(areaPrincipal)) {
+        throw new Error("El área principal debe estar entre las materias seleccionadas.");
+      }
+      return { ...base, materias, areaPrincipal };
+    }
+
+    if (rol === "padre") {
+      const parentesco = $('input[name="edit-parentesco"]:checked')?.value || "";
+      if (!parentesco) throw new Error("Indica si eres papá o mamá.");
+      const hijos = $$("#edit-hijos-list .il-hijo-row")
+        .map((row) => ({
+          nombre: row.querySelector('[name="editHijoNombre"]')?.value.trim() || "",
+          grado: row.querySelector('[name="editHijoGrado"]')?.value || "",
+        }))
+        .filter((h) => h.nombre && h.grado);
+      if (!hijos.length) throw new Error("Agrega al menos un hijo(a) con nombre y grado.");
+      return { ...base, parentesco, hijos };
+    }
+
+    if (rol === "directivo") {
+      const cargo = $("#edit-cargo")?.value || "";
+      if (!cargo) throw new Error("Selecciona el cargo.");
+      return { ...base, cargo };
+    }
+
+    throw new Error("Tipo de cuenta no válido.");
+  }
+
+  function openEditPerfilModal() {
+    const dialog = $("#modal-edit-perfil");
+    if (!dialog || !perfil) return;
+    setError("#edit-perfil-error", "");
+
+    $("#edit-nombres").value = perfil.nombres || "";
+    $("#edit-apellidos").value = perfil.apellidos || "";
+
+    const current = String(perfil.fotoUrl || "").trim();
+    const google = String(user?.photoURL || "").trim();
+    $("#edit-foto-url").value = current && current !== google ? current : "";
+
+    const rol = perfil.rol || "";
+    $$('input[name="edit-rol"]').forEach((r) => {
+      r.checked = r.value === rol;
+    });
+
+    if (rol === "estudiante") {
+      $("#edit-grado").value = perfil.grado || "";
+    }
+
+    if (rol === "docente") {
+      const mats = Array.isArray(perfil.materias) ? perfil.materias : [];
+      $$('#edit-materias-list input[type="checkbox"]').forEach((c) => {
+        c.checked = mats.includes(c.value);
+      });
+      $("#edit-area").value = perfil.areaPrincipal || "";
+    }
+
+    if (rol === "padre") {
+      $$('input[name="edit-parentesco"]').forEach((r) => {
+        r.checked = r.value === perfil.parentesco;
+      });
+      const wrap = $("#edit-hijos-list");
+      if (wrap) wrap.innerHTML = "";
+      const hijos = Array.isArray(perfil.hijos) && perfil.hijos.length ? perfil.hijos : [{ nombre: "", grado: "" }];
+      hijos.forEach((h) => addEditHijoRow(h.nombre || "", h.grado || ""));
+    }
+
+    if (rol === "directivo") {
+      $("#edit-cargo").value = perfil.cargo || "";
+    }
+
+    syncEditRolFields();
+    syncEditFotoPreview();
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
   }
 
   async function afterAuth(u) {
@@ -554,6 +1035,7 @@
       if (parts.length > 1) $("#perfil-apellidos").value = parts.slice(1).join(" ");
       setOnboardingStep(1);
       updateObPreview();
+      syncPerfilFotoPreview();
       showScreen("onboarding");
       return;
     }
@@ -564,10 +1046,20 @@
     fillSelect($("#perfil-grado"), GRADOS, "Selecciona el grado");
     fillSelect($("#perfil-area"), MATERIAS, "Área principal");
     fillSelect($("#perfil-cargo"), CARGOS, "Selecciona el cargo");
+    fillSelect($("#edit-grado"), GRADOS, "Selecciona el grado");
+    fillSelect($("#edit-area"), MATERIAS, "Área principal");
+    fillSelect($("#edit-cargo"), CARGOS, "Selecciona el cargo");
 
     const matList = $("#materias-list");
     if (matList) {
       matList.innerHTML = MATERIAS.map(
+        (m) =>
+          `<label class="ob-chip"><input type="checkbox" value="${M().escapeAttr(m)}" /><span>${M().escapeHtml(m)}</span></label>`
+      ).join("");
+    }
+    const editMatList = $("#edit-materias-list");
+    if (editMatList) {
+      editMatList.innerHTML = MATERIAS.map(
         (m) =>
           `<label class="ob-chip"><input type="checkbox" value="${M().escapeAttr(m)}" /><span>${M().escapeHtml(m)}</span></label>`
       ).join("");
@@ -584,11 +1076,21 @@
     );
     ["perfil-nombres", "perfil-apellidos", "perfil-grado", "perfil-area", "perfil-cargo"].forEach((id) => {
       const el = document.getElementById(id);
-      el?.addEventListener("input", updateObPreview);
-      el?.addEventListener("change", updateObPreview);
+      el?.addEventListener("input", () => {
+        updateObPreview();
+        syncPerfilFotoPreview();
+      });
+      el?.addEventListener("change", () => {
+        updateObPreview();
+        syncPerfilFotoPreview();
+      });
     });
+    $("#perfil-foto")?.addEventListener("input", syncPerfilFotoPreview);
+    $("#perfil-foto")?.addEventListener("change", syncPerfilFotoPreview);
     $$('input[name="parentesco"]').forEach((r) => r.addEventListener("change", updateObPreview));
     matList?.addEventListener("change", updateObPreview);
+    ensureAvatarZoom();
+    syncPerfilFotoPreview();
 
     document.querySelectorAll("[data-ob-next]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -620,6 +1122,63 @@
       updateObPreview();
     });
 
+    $("#btn-edit-perfil")?.addEventListener("click", () => openEditPerfilModal());
+    $("#edit-foto-url")?.addEventListener("input", syncEditFotoPreview);
+    $("#edit-foto-url")?.addEventListener("change", syncEditFotoPreview);
+    $("#edit-nombres")?.addEventListener("input", syncEditFotoPreview);
+    $("#edit-apellidos")?.addEventListener("input", syncEditFotoPreview);
+    $$('input[name="edit-rol"]').forEach((r) =>
+      r.addEventListener("change", () => {
+        syncEditRolFields();
+        if (r.value === "padre" && !$("#edit-hijos-list .il-hijo-row")) {
+          addEditHijoRow();
+        }
+      })
+    );
+    $("#btn-edit-add-hijo")?.addEventListener("click", () => addEditHijoRow());
+    $("#edit-hijos-list")?.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-remove-edit-hijo]");
+      if (!btn) return;
+      const rows = $$("#edit-hijos-list .il-hijo-row");
+      if (rows.length <= 1) return;
+      btn.closest(".il-hijo-row")?.remove();
+    });
+    $("#form-edit-perfil")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setError("#edit-perfil-error", "");
+      if (!user || !perfil) return;
+      try {
+        const data = collectEditPerfil();
+        perfil = await FB().savePerfil(user.uid, data);
+        try {
+          await FB().updateOwnAutorMeta({
+            fotoUrl: perfil.fotoUrl || "",
+            autorLabel: autorLabel(perfil),
+            autorRol: perfil.rol || "",
+            autorEmail: user?.email || perfil.email || "",
+            // Si es padre con varios hijos, cada post puede firmar con un hijo distinto
+            rewriteLabel:
+              perfil.rol !== "padre" ||
+              !Array.isArray(perfil.hijos) ||
+              perfil.hijos.length <= 1,
+          });
+        } catch (err) {
+          console.warn("No se pudo actualizar publicaciones previas", err);
+        }
+        $("#user-chip-label").textContent = autorLabel(perfil);
+        $("#top-user-name").textContent = `${perfil.nombres || ""} ${perfil.apellidos || ""}`.trim();
+        syncComposeAvatar();
+        syncPublishHijoSelect();
+        renderFeed();
+        if (openCommentsPostId) renderCommentsList();
+        const dialog = $("#modal-edit-perfil");
+        if (dialog?.open) dialog.close();
+        else dialog?.removeAttribute("open");
+      } catch (err) {
+        setError("#edit-perfil-error", err.message || "No se pudo guardar el perfil.");
+      }
+    });
+
     $("#btn-google")?.addEventListener("click", async () => {
       setError("#login-error", "");
       try {
@@ -645,16 +1204,19 @@
     });
 
     $("#btn-logout")?.addEventListener("click", async () => {
-      await FB().logOut();
+      if (!confirm("¿Cerrar sesión de Google en InmaLink? Tendrás que volver a entrar con tu correo.")) {
+        return;
+      }
+      try {
+        await FB().logOut();
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo cerrar la sesión.");
+      }
     });
 
     $("#btn-new-post")?.addEventListener("click", () => {
-      const dialog = $("#modal-publish");
-      $("#form-publish")?.reset();
-      syncPublishHijoSelect();
-      setError("#publish-error", "");
-      if (typeof dialog.showModal === "function") dialog.showModal();
-      else dialog.setAttribute("open", "");
+      openPublishModal(null);
     });
 
     $$("[data-close-modal]").forEach((btn) => {
@@ -673,6 +1235,7 @@
       const form = e.target;
       const titulo = form.titulo.value.trim();
       const mensaje = form.mensaje.value.trim();
+      const recordId = form.recordId?.value?.trim() || "";
       if (!titulo || !mensaje) {
         setError("#publish-error", "Título y mensaje son obligatorios.");
         return;
@@ -683,7 +1246,7 @@
           hijoIndex = Number($("#publish-hijo")?.value || 0);
         }
         const label = autorLabel(perfil, { hijoIndex });
-        await FB().createPost({
+        const payload = {
           titulo,
           mensaje,
           videoYoutube: form.videoYoutube.value.trim(),
@@ -691,14 +1254,38 @@
           imagenDrive: form.imagenDrive.value.trim(),
           autorLabel: label,
           autorRol: perfil.rol,
-        });
+          autorFotoUrl: perfil.fotoUrl || "",
+          autorEmail: user?.email || perfil.email || "",
+        };
+        if (recordId) {
+          await FB().updatePost(recordId, payload);
+        } else {
+          await FB().createPost(payload);
+        }
         const dialog = $("#modal-publish");
         if (dialog?.open) dialog.close();
         else dialog?.removeAttribute("open");
         form.reset();
+        form.recordId.value = "";
       } catch (err) {
         console.error(err);
-        setError("#publish-error", err.message || "No se pudo publicar.");
+        setError("#publish-error", err.message || "No se pudo guardar.");
+      }
+    });
+
+    $("#form-edit-comment")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setError("#edit-comment-error", "");
+      const commentId = $("#edit-comment-id")?.value || "";
+      const texto = $("#edit-comment-text")?.value.trim() || "";
+      if (!openCommentsPostId || !commentId) return;
+      try {
+        await FB().updateComentario(openCommentsPostId, commentId, texto);
+        const dialog = $("#modal-edit-comment");
+        if (dialog?.open) dialog.close();
+        else dialog?.removeAttribute("open");
+      } catch (err) {
+        setError("#edit-comment-error", err.message || "No se pudo editar.");
       }
     });
 
@@ -728,6 +1315,13 @@
         openComments(comBtn.getAttribute("data-comments"));
         return;
       }
+      const editBtn = e.target.closest("[data-edit-post]");
+      if (editBtn) {
+        const id = editBtn.getAttribute("data-edit-post");
+        const post = posts.find((p) => p.id === id);
+        if (post) openPublishModal(post);
+        return;
+      }
       const delBtn = e.target.closest("[data-delete-post]");
       if (delBtn) {
         const id = delBtn.getAttribute("data-delete-post");
@@ -741,6 +1335,23 @@
     });
 
     $("#comments-list")?.addEventListener("click", async (e) => {
+      const editC = e.target.closest("[data-cedit]");
+      if (editC) {
+        openEditCommentModal(editC.getAttribute("data-cedit"));
+        return;
+      }
+      const delC = e.target.closest("[data-cdelete]");
+      if (delC) {
+        const id = delC.getAttribute("data-cdelete");
+        if (!openCommentsPostId || !id) return;
+        if (!confirm("¿Eliminar este comentario?")) return;
+        try {
+          await FB().deleteComentario(openCommentsPostId, id);
+        } catch (err) {
+          alert(err.message || "No se pudo eliminar.");
+        }
+        return;
+      }
       const likeBtn = e.target.closest("[data-clike]");
       if (likeBtn) {
         const id = likeBtn.getAttribute("data-clike");
@@ -776,6 +1387,8 @@
           autorGrado: commentAutorGrado(perfil),
           autorNombre: perfil.nombres || "",
           autorApellidos: perfil.apellidos || "",
+          autorFotoUrl: perfil.fotoUrl || "",
+          autorEmail: user?.email || perfil.email || "",
         });
         $("#comment-text").value = "";
       } catch (err) {

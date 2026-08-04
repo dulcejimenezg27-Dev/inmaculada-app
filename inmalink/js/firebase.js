@@ -31,6 +31,7 @@ import {
   increment,
   arrayUnion,
   arrayRemove,
+  where,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 const cfg = window.INMALINK_FIREBASE_CONFIG || {};
@@ -128,9 +129,11 @@ async function getPerfil(uid) {
 async function savePerfil(uid, data) {
   await initPromise;
   if (!db || !uid) throw new Error("Sin usuario");
+  const email = String(auth?.currentUser?.email || data.email || "").trim();
   const payload = sanitize({
     ...data,
     uid,
+    email,
     updatedAt: new Date().toISOString(),
   });
   if (!payload.createdAt) payload.createdAt = new Date().toISOString();
@@ -163,6 +166,7 @@ async function createPost(data) {
   const ref = await addDoc(collection(db, "posts"), sanitize({
     ...data,
     autorUid: uid,
+    autorEmail: String(data.autorEmail || auth.currentUser.email || "").trim(),
     likesCount: 0,
     likedBy: [],
     dislikesCount: 0,
@@ -238,6 +242,8 @@ async function addComentario(postId, texto, meta = {}) {
     autorGrado: String(meta.autorGrado || "").trim(),
     autorNombre: String(meta.autorNombre || "").trim(),
     autorApellidos: String(meta.autorApellidos || "").trim(),
+    autorFotoUrl: String(meta.autorFotoUrl || "").trim(),
+    autorEmail: String(meta.autorEmail || auth.currentUser.email || "").trim(),
     likesCount: 0,
     likedBy: [],
     dislikesCount: 0,
@@ -314,6 +320,100 @@ function watchComentarios(postId, callback) {
   );
 }
 
+async function updatePost(postId, data) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const ref = doc(db, "posts", postId);
+  const snap = await getDoc(ref);
+  if (!snap.exists() || snap.data().autorUid !== uid) {
+    throw new Error("No puedes editar esta publicación");
+  }
+  await updateDoc(
+    ref,
+    sanitize({
+      titulo: String(data.titulo || "").trim(),
+      mensaje: String(data.mensaje || "").trim(),
+      videoYoutube: String(data.videoYoutube || "").trim(),
+      videoDrive: String(data.videoDrive || "").trim(),
+      imagenDrive: String(data.imagenDrive || "").trim(),
+      autorLabel: String(data.autorLabel || snap.data().autorLabel || "").trim(),
+      autorRol: String(data.autorRol || snap.data().autorRol || "").trim(),
+      autorFotoUrl: String(data.autorFotoUrl || snap.data().autorFotoUrl || "").trim(),
+      autorEmail: String(data.autorEmail || snap.data().autorEmail || auth.currentUser.email || "").trim(),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+}
+
+async function updateComentario(postId, commentId, texto) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const ref = doc(db, "posts", postId, "comentarios", commentId);
+  const snap = await getDoc(ref);
+  if (!snap.exists() || snap.data().autorUid !== uid) {
+    throw new Error("No puedes editar este comentario");
+  }
+  const t = String(texto || "").trim();
+  if (!t) throw new Error("El comentario no puede quedar vacío");
+  if (t.length > 500) throw new Error("Máximo 500 caracteres");
+  await updateDoc(ref, {
+    texto: t,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+async function deleteComentario(postId, commentId) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const ref = doc(db, "posts", postId, "comentarios", commentId);
+  const snap = await getDoc(ref);
+  if (!snap.exists() || snap.data().autorUid !== uid) {
+    throw new Error("No puedes eliminar este comentario");
+  }
+  await deleteDoc(ref);
+  const postRef = doc(db, "posts", postId);
+  const postSnap = await getDoc(postRef);
+  if (postSnap.exists()) {
+    const count = Number(postSnap.data().comentariosCount) || 0;
+    await updateDoc(postRef, {
+      comentariosCount: Math.max(0, count - 1),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+async function updateOwnAutorMeta({ fotoUrl, autorLabel, autorRol, autorEmail, rewriteLabel = true } = {}) {
+  await initPromise;
+  if (!db || !auth?.currentUser) throw new Error("Debes iniciar sesión");
+  const uid = auth.currentUser.uid;
+  const url = String(fotoUrl || "").trim();
+  const email = String(autorEmail || auth.currentUser.email || "").trim();
+  const q = query(collection(db, "posts"), where("autorUid", "==", uid), limit(80));
+  const snap = await getDocs(q);
+  await Promise.all(
+    snap.docs.map((d) => {
+      const patch = {
+        autorFotoUrl: url,
+        autorEmail: email,
+        updatedAt: new Date().toISOString(),
+      };
+      if (autorRol != null) patch.autorRol = String(autorRol || "").trim();
+      if (rewriteLabel && autorLabel != null) {
+        patch.autorLabel = String(autorLabel || "").trim();
+      }
+      return updateDoc(d.ref, patch);
+    })
+  );
+}
+
+/** @deprecated usar updateOwnAutorMeta */
+async function updateOwnAutorFoto(fotoUrl) {
+  return updateOwnAutorMeta({ fotoUrl, rewriteLabel: false });
+}
+
 async function deleteOwnPost(postId, uid) {
   await initPromise;
   if (!db || !uid) throw new Error("Sin permiso");
@@ -349,7 +449,12 @@ window.InmaLinkFirebase = {
   addComentario,
   toggleCommentLike,
   toggleCommentDislike,
+  updateComentario,
+  deleteComentario,
   watchComentarios,
+  updatePost,
+  updateOwnAutorFoto,
+  updateOwnAutorMeta,
   deleteOwnPost,
   serverTimestamp,
 };

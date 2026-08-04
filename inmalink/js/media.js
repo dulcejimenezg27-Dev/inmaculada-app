@@ -127,6 +127,7 @@ window.InmaLinkMedia = (() => {
     escapeHtml,
     extractDriveId,
     youtubeVideoId,
+    driveImageCandidates,
     mediaHtml,
   };
 })();

@@ -57,7 +57,7 @@
         <h3>Cómo moverte</h3>
         <p>Usa el menú superior (computador) o la barra inferior (celular). En Inicio también hay accesos rápidos.</p>
         <ul>
-          <li><strong>Inicio:</strong> logo, accesos rápidos, redes y cómo llegar.</li>
+          <li><strong>Inicio:</strong> logo, accesos rápidos, redes, <strong>InmaLink</strong> y cómo llegar.</li>
           <li><strong>Pagos:</strong> paga con PSE y envía el soporte por WhatsApp.</li>
           <li><strong>Comunicados:</strong> avisos oficiales del colegio (solo lectura).</li>
           <li><strong>Bienestar:</strong> orientación de psicología escolar.</li>
@@ -66,12 +66,28 @@
           <li><strong>Cuadro de honor:</strong> destacados por salón y período (oro, plata y bronce).</li>
           <li><strong>Símbolos:</strong> bandera, escudo e himno (próximamente).</li>
         </ul>
+        <h3 class="ayuda-brand-title">
+          <img src="image/InmaLinkLogo-fab.png" alt="" class="ayuda-inline-logo" width="28" height="28" decoding="async" />
+          <span>InmaLink</span>
+        </h3>
+        <p>
+          <strong>InmaLink</strong> es la red social de la comunidad educativa (estudiantes, docentes, padres/madres y directivos).
+          Entras desde Inicio con el botón circular del logo, debajo de las redes.
+        </p>
+        <ul>
+          <li>Inicias sesión con tu <strong>cuenta de Google</strong>.</li>
+          <li>Creas tu perfil (nombre, rol, datos del colegio y foto opcional con enlace de Drive).</li>
+          <li>Puedes <strong>publicar</strong>, dar me gusta / no me gusta y comentar.</li>
+          <li>También puedes <strong>editar tu perfil</strong> después (nombre, foto y datos del rol).</li>
+          <li>El mal uso puede causar <strong>bloqueo definitivo</strong>: cuida el respeto.</li>
+          <li>Con <strong>Volver a la App</strong> regresas aquí sin cerrar la sesión de InmaLink.</li>
+        </ul>
         <h3>Me gusta</h3>
-        <p>En <strong>Comunicados</strong>, <strong>Bienestar</strong> y <strong>Personería</strong> puedes tocar el corazón ♡ para dar me gusta. No necesitas iniciar sesión.</p>
+        <p>En <strong>Comunicados</strong>, <strong>Bienestar</strong> y <strong>Personería</strong> puedes tocar el corazón ♡ para dar me gusta. No necesitas iniciar sesión. En InmaLink los me gusta sí requieren cuenta de Google.</p>
         <h3>Filtros</h3>
-        <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.).</p>
+        <p>En cada sección de publicaciones puedes filtrar por categoría (urgente, académico, familia, propuestas, etc.). En los comentarios de InmaLink también puedes filtrar por rol, usuario o grado.</p>
         <h3>Otros accesos</h3>
-        <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook, el <strong>canal de WhatsApp</strong> del colegio y Google Maps.</p>
+        <p>En Inicio también encuentras <strong>Pruebas parciales</strong>, Instagram, Facebook, el <strong>canal de WhatsApp</strong> del colegio, el botón de <strong>InmaLink</strong> y Google Maps.</p>
         ${installHtml(INSTALL.publica)}
       `,
     },

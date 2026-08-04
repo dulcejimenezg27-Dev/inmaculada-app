@@ -73,7 +73,12 @@
   /* Navegación */
   let activeViewName = null;
 
-  function showView(name) {
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+
+  function showView(name, opts = {}) {
+    const allowScroll = opts.scroll !== false;
     const viewChanged = activeViewName !== name;
     activeViewName = name;
 
@@ -94,8 +99,8 @@
     if (name === "agenda") renderAgenda();
     if (name === "puestos") renderPuestos();
 
-    // Solo subir al cambiar de sección (evita el “brinco” al terminar de cargar Firebase)
-    if (viewChanged) {
+    // Solo al cambiar sección por navegación del usuario (no al hidratar Firebase)
+    if (allowScroll && viewChanged) {
       window.scrollTo({ top: 0, behavior: "auto" });
     }
   }
@@ -898,6 +903,10 @@
   fillSalonSelects();
 
   async function boot() {
+    // Pintar la vista al instante sin forzar scroll (Android: el usuario puede estar bajando
+    // mientras hidrata Firebase; un scrollTo al final lo subía solo).
+    showView(currentHash(), { scroll: false });
+
     if (C?.ensureAvatarLightbox) C.ensureAvatarLightbox();
     if (C) {
       // Agenda y respaldo estático; comunicados/honor los manda Firestore si está activo
@@ -908,7 +917,7 @@
     async function attachFirebase() {
       const FB = window.InmaculadaFirebase;
       if (!FB?.configured) {
-        showView(currentHash());
+        showView(currentHash(), { scroll: false });
         return;
       }
 
@@ -1006,7 +1015,7 @@
         });
       }
 
-      showView(currentHash());
+      showView(currentHash(), { scroll: false });
     }
 
     if (window.InmaculadaFirebase) {
@@ -1019,7 +1028,7 @@
         },
         { once: true }
       );
-      showView(currentHash());
+      showView(currentHash(), { scroll: false });
     }
   }
 
