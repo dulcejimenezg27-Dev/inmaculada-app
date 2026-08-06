@@ -559,6 +559,7 @@
         if (c.videoYoutube) badges.push("YouTube");
         if (c.videoDrive) badges.push("Video Drive");
         if (c.imagenDrive) badges.push("Imagen Drive");
+        if (c.pdfDrive) badges.push("PDF");
         const autorNombre =
           c.autor?.nombreCompleto ||
           [c.autor?.nombres, c.autor?.apellidos].filter(Boolean).join(" ") ||
@@ -613,6 +614,7 @@
       form.videoYoutube.value = item.videoYoutube || "";
       form.videoDrive.value = item.videoDrive || "";
       form.imagenDrive.value = item.imagenDrive || "";
+      if (form.pdfDrive) form.pdfDrive.value = item.pdfDrive || "";
       document.getElementById("modal-com-title").textContent = "Editar comunicado";
       document.getElementById("modal-com").showModal();
     }
@@ -642,6 +644,7 @@
     const videoYoutube = form.videoYoutube.value.trim();
     const videoDrive = form.videoDrive.value.trim();
     const imagenDrive = form.imagenDrive.value.trim();
+    const pdfDrive = form.pdfDrive?.value?.trim() || "";
     if (!titulo || !mensaje) return;
 
     if (!FB?.auth?.currentUser) {
@@ -672,6 +675,7 @@
           item.videoYoutube = videoYoutube;
           item.videoDrive = videoDrive;
           item.imagenDrive = imagenDrive;
+          item.pdfDrive = pdfDrive;
           item.autor = autor;
           item.updatedAt = new Date().toISOString();
           item.updatedBy = currentUser?.email || FB.auth.currentUser.email || "";
@@ -685,6 +689,7 @@
           videoYoutube,
           videoDrive,
           imagenDrive,
+          pdfDrive,
           fecha: new Date().toISOString().slice(0, 10),
           autor,
           createdBy: currentUser?.email || FB.auth.currentUser.email || "",

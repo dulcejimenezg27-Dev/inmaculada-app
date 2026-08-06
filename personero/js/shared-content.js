@@ -482,6 +482,22 @@ window.InmaculadaContent = (() => {
         );
       }
     }
+
+    const pdfId = extractDriveId(comunicado.pdfDrive || "");
+    if (pdfId) {
+      const preview = `https://drive.google.com/file/d/${encodeURIComponent(pdfId)}/preview`;
+      const download = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(pdfId)}`;
+      parts.push(
+        `<div class="media-pdf">
+          <div class="media-pdf__frame">
+            <iframe src="${escapeAttr(preview)}" title="Documento PDF" loading="lazy" allow="autoplay"></iframe>
+          </div>
+          <div class="media-pdf__actions">
+            <a class="media-pdf__download btn btn--primary" href="${escapeAttr(download)}" target="_blank" rel="noopener noreferrer">Descargar PDF</a>
+          </div>
+        </div>`
+      );
+    }
     return parts.join("");
   }
 

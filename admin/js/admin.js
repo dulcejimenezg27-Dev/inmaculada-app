@@ -437,6 +437,7 @@
         if (c.videoYoutube) badges.push("YouTube");
         if (c.videoDrive) badges.push("Video Drive");
         if (c.imagenDrive) badges.push("Imagen Drive");
+        if (c.pdfDrive) badges.push("PDF");
         return `
       <article class="admin-item">
         <div class="admin-item__meta">
@@ -485,6 +486,7 @@
       form.videoYoutube.value = item.videoYoutube || "";
       form.videoDrive.value = item.videoDrive || "";
       form.imagenDrive.value = item.imagenDrive || "";
+      if (form.pdfDrive) form.pdfDrive.value = item.pdfDrive || "";
       document.getElementById("modal-com-title").textContent = "Editar comunicado";
       document.getElementById("modal-com").showModal();
     }
@@ -511,6 +513,7 @@
     const videoYoutube = form.videoYoutube.value.trim();
     const videoDrive = form.videoDrive.value.trim();
     const imagenDrive = form.imagenDrive.value.trim();
+    const pdfDrive = form.pdfDrive?.value?.trim() || "";
     if (!titulo || !mensaje) return;
 
     if (!hasPerfil()) {
@@ -536,6 +539,7 @@
           item.videoYoutube = videoYoutube;
           item.videoDrive = videoDrive;
           item.imagenDrive = imagenDrive;
+          item.pdfDrive = pdfDrive;
           item.updatedAt = new Date().toISOString();
           item.updatedBy = "admin";
           item.autor = autor;
@@ -549,6 +553,7 @@
           videoYoutube,
           videoDrive,
           imagenDrive,
+          pdfDrive,
           fecha: new Date().toISOString().slice(0, 10),
           createdBy: "admin",
           createdAt: new Date().toISOString(),

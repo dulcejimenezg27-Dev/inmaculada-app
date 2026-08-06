@@ -219,6 +219,7 @@
         if (p.videoYoutube) badges.push("YouTube");
         if (p.videoDrive) badges.push("Video Drive");
         if (p.imagenDrive) badges.push("Imagen Drive");
+        if (p.pdfDrive) badges.push("PDF");
         return `
       <article class="admin-item">
         ${
@@ -420,6 +421,7 @@
       form.videoYoutube.value = item.videoYoutube || "";
       form.videoDrive.value = item.videoDrive || "";
       form.imagenDrive.value = item.imagenDrive || "";
+      if (form.pdfDrive) form.pdfDrive.value = item.pdfDrive || "";
       document.getElementById("modal-post-title").textContent = "Editar publicación";
       document.getElementById("modal-post").showModal();
     }
@@ -457,6 +459,7 @@
     const videoYoutube = form.videoYoutube.value.trim();
     const videoDrive = form.videoDrive.value.trim();
     const imagenDrive = form.imagenDrive.value.trim();
+    const pdfDrive = form.pdfDrive?.value?.trim() || "";
     if (!titulo || !mensaje) return;
 
     if (btn) {
@@ -477,6 +480,7 @@
           videoYoutube,
           videoDrive,
           imagenDrive,
+          pdfDrive,
           autor,
           updatedAt: new Date().toISOString(),
           updatedBy: currentUser.email || "",
@@ -490,6 +494,7 @@
           videoYoutube,
           videoDrive,
           imagenDrive,
+          pdfDrive,
           fecha: new Date().toISOString().slice(0, 10),
           autor,
           createdBy: currentUser.email || "",
