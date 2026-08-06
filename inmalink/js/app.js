@@ -79,6 +79,46 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+  function escHtml(str) {
+    const fn = M()?.escapeHtml;
+    if (typeof fn === "function") return fn(str);
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function escAttr(str) {
+    const fn = M()?.escapeAttr;
+    if (typeof fn === "function") return fn(str);
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function toJsDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    if (typeof value?.toDate === "function") {
+      try {
+        const d = value.toDate();
+        return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+      } catch {
+        return null;
+      }
+    }
+    if (typeof value === "object" && value.seconds != null) {
+      const d = new Date(Number(value.seconds) * 1000);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   function firstWord(str) {
     return String(str || "").trim().split(/\s+/).filter(Boolean)[0] || "";
   }
@@ -205,7 +245,6 @@
   }
 
   function renderOneComment(c, opts = {}) {
-    const esc = M().escapeHtml;
     const uid = user?.uid || "";
     const liked = Array.isArray(c.likedBy) && uid && c.likedBy.includes(uid);
     const disliked = Array.isArray(c.dislikedBy) && uid && c.dislikedBy.includes(uid);
@@ -214,10 +253,10 @@
     const label = c.autorLabel || "Usuario";
     const isReply = !!opts.isReply;
     const replyHint = c.replyToLabel
-      ? `<p class="il-comment__reply-to">Respondió a <strong>${esc(c.replyToLabel)}</strong></p>`
+      ? `<p class="il-comment__reply-to">Respondió a <strong>${escHtml(c.replyToLabel)}</strong></p>`
       : "";
     return `
-      <div class="il-comment${isReply ? " il-comment--reply" : ""}" data-id="${esc(c.id)}">
+      <div class="il-comment${isReply ? " il-comment--reply" : ""}" data-id="${escAttr(c.id)}">
         <div class="il-comment__top">
           <div class="il-comment__who">
             ${driveAvatarHtml(foto, label, {
@@ -226,10 +265,10 @@
               uid: c.autorUid || "",
             })}
             <div class="il-comment__meta">
-              <strong class="il-comment__author">${esc(displayAutorLabel(label))}</strong>
+              <strong class="il-comment__author">${escHtml(displayAutorLabel(label))}</strong>
               <div class="il-comment__when">
                 ${fechaPublicacionHtml(c.createdAt || c.updatedAt, "il-comment__date")}${
-                  c.updatedAt && c.createdAt && c.updatedAt !== c.createdAt
+                  c.updatedAt && c.createdAt && String(c.updatedAt) !== String(c.createdAt)
                     ? `<span class="il-comment__edited">· editado</span>`
                     : ""
                 }
@@ -238,31 +277,31 @@
           </div>
         </div>
         ${replyHint}
-        <p class="il-comment__text" data-ctext="${esc(c.id)}">${esc(c.texto || "")}</p>
-        <div class="il-comment__edit" data-cedit-box="${esc(c.id)}" hidden>
-          <textarea rows="3" maxlength="500">${esc(c.texto || "")}</textarea>
+        <p class="il-comment__text" data-ctext="${escAttr(c.id)}">${escHtml(c.texto || "")}</p>
+        <div class="il-comment__edit" data-cedit-box="${escAttr(c.id)}" hidden>
+          <textarea rows="3" maxlength="500">${escHtml(c.texto || "")}</textarea>
           <div class="il-comment__edit-actions">
-            <button type="button" class="btn btn--ghost btn--sm" data-cedit-cancel="${esc(c.id)}">Cancelar</button>
-            <button type="button" class="btn btn--primary btn--sm" data-cedit-save="${esc(c.id)}">Guardar</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-cedit-cancel="${escAttr(c.id)}">Cancelar</button>
+            <button type="button" class="btn btn--primary btn--sm" data-cedit-save="${escAttr(c.id)}">Guardar</button>
           </div>
           <p class="il-error il-comment__edit-error" hidden></p>
         </div>
         <div class="il-comment__actions">
-          <button type="button" class="il-react il-react--sm il-like ${liked ? "is-active" : ""}" data-clike="${esc(c.id)}" aria-pressed="${liked}" aria-label="Me gusta">
+          <button type="button" class="il-react il-react--sm il-like ${liked ? "is-active" : ""}" data-clike="${escAttr(c.id)}" aria-pressed="${liked}" aria-label="Me gusta">
             <span class="il-react__icon">${liked ? "♥" : "♡"}</span>
             <span class="il-react__label">${isReply ? "" : "Me gusta"}</span>
             <span class="il-react__count">${Number(c.likesCount) || 0}</span>
           </button>
-          <button type="button" class="il-react il-react--sm il-dislike ${disliked ? "is-active" : ""}" data-cdislike="${esc(c.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
+          <button type="button" class="il-react il-react--sm il-dislike ${disliked ? "is-active" : ""}" data-cdislike="${escAttr(c.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
             <span class="il-react__icon">${disliked ? "▾" : "▿"}</span>
             <span class="il-react__label">${isReply ? "" : "No me gusta"}</span>
             <span class="il-react__count">${Number(c.dislikesCount) || 0}</span>
           </button>
-          <button type="button" class="btn btn--ghost btn--sm" data-creply="${esc(c.id)}">Responder</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-creply="${escAttr(c.id)}">Responder</button>
           ${
             mine
-              ? `<button type="button" class="btn btn--ghost btn--sm" data-cedit="${esc(c.id)}">Editar</button>
-          <button type="button" class="btn btn--ghost btn--sm" data-cdelete="${esc(c.id)}">Eliminar</button>`
+              ? `<button type="button" class="btn btn--ghost btn--sm" data-cedit="${escAttr(c.id)}">Editar</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-cdelete="${escAttr(c.id)}">Eliminar</button>`
               : ""
           }
         </div>
@@ -295,8 +334,6 @@
   }
 
   function driveAvatarHtml(fotoUrl, nombre, opts = {}) {
-    const esc = M().escapeHtml;
-    const escA = M().escapeAttr;
     const sizeClass = opts.sm ? " il-avatar--sm" : "";
     const btnClass = opts.sm ? " il-avatar-btn--sm" : "";
     const email = String(opts.email || "").trim();
@@ -310,18 +347,18 @@
       if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     })();
-    const meta = ` data-avatar-zoom data-avatar-name="${escA(nombre || "")}" data-avatar-email="${escA(email)}" data-avatar-uid="${escA(uid)}" aria-label="Ver foto de ${escA(nombre || "usuario")}"`;
+    const meta = ` data-avatar-zoom data-avatar-name="${escAttr(nombre || "")}" data-avatar-email="${escAttr(email)}" data-avatar-uid="${escAttr(uid)}" aria-label="Ver foto de ${escAttr(nombre || "usuario")}"`;
     const raw = String(fotoUrl || "").trim();
-    const candidates = raw && M().driveImageCandidates ? M().driveImageCandidates(raw) : raw ? [raw] : [];
+    const candidates = raw && M()?.driveImageCandidates ? M().driveImageCandidates(raw) : raw ? [raw] : [];
     if (candidates.length) {
       const [first, ...rest] = candidates;
       const large = first.includes("=w")
         ? first.replace(/=w\d+/, "=w1600")
         : first;
-      const fb = ` data-fallbacks="${rest.map(escA).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');}})(this)"`;
-      return `<button type="button" class="il-avatar-btn${btnClass}"${meta} data-avatar-src="${escA(large)}" data-avatar-fallbacks="${[first, ...rest].map(escA).join("|")}"><img class="il-avatar" src="${escA(first)}" alt="" loading="lazy" referrerpolicy="no-referrer"${fb} /><span class="il-avatar il-avatar--fallback" hidden aria-hidden="true">${esc(initials)}</span></button>`;
+      const fb = ` data-fallbacks="${rest.map(escAttr).join("|")}" data-fi="0" onerror="(function(el){var f=(el.getAttribute('data-fallbacks')||'').split('|').filter(Boolean);var i=+(el.getAttribute('data-fi')||0);if(i&lt;f.length){el.setAttribute('data-fi',String(i+1));el.src=f[i];return;}el.style.display='none';el.setAttribute('hidden','');var n=el.nextElementSibling;if(n){n.removeAttribute('hidden');}})(this)"`;
+      return `<button type="button" class="il-avatar-btn${btnClass}"${meta} data-avatar-src="${escAttr(large)}" data-avatar-fallbacks="${[first, ...rest].map(escAttr).join("|")}"><img class="il-avatar" src="${escAttr(first)}" alt="" loading="lazy" referrerpolicy="no-referrer"${fb} /><span class="il-avatar il-avatar--fallback" hidden aria-hidden="true">${escHtml(initials)}</span></button>`;
     }
-    return `<button type="button" class="il-avatar-btn${btnClass}"${meta}><span class="il-avatar il-avatar--fallback${sizeClass}" aria-hidden="true">${esc(initials)}</span></button>`;
+    return `<button type="button" class="il-avatar-btn${btnClass}"${meta}><span class="il-avatar il-avatar--fallback${sizeClass}" aria-hidden="true">${escHtml(initials)}</span></button>`;
   }
 
   function ensureAvatarZoom() {
@@ -526,9 +563,11 @@
   }
 
   function formatFecha(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+    const d = toJsDate(iso);
+    if (!d) {
+      const s = String(iso || "").trim();
+      return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : "";
+    }
     return d.toLocaleDateString("es-CO", {
       day: "numeric",
       month: "long",
@@ -537,11 +576,10 @@
   }
 
   function formatHora(iso) {
-    if (!iso) return "";
-    const s = String(iso).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return "";
+    const d = toJsDate(iso);
+    if (!d) return "";
+    // Solo fecha (YYYY-MM-DD): no hay hora útil
+    if (typeof iso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(iso.trim())) return "";
     return d.toLocaleTimeString("es-CO", {
       hour: "numeric",
       minute: "2-digit",
@@ -549,11 +587,12 @@
   }
 
   function fechaPublicacionHtml(iso, className = "il-post__date") {
-    const escHtml = M()?.escapeHtml || ((s) => String(s));
     const fecha = formatFecha(iso);
     if (!fecha) return "";
     const hora = formatHora(iso);
-    return `<time class="${className}" datetime="${escHtml(String(iso))}"><span class="il-post__date-day">${escHtml(fecha)}</span>${
+    const dt = toJsDate(iso);
+    const datetime = dt ? dt.toISOString() : String(iso || "").slice(0, 10);
+    return `<time class="${className}" datetime="${escAttr(datetime)}"><span class="il-post__date-day">${escHtml(fecha)}</span>${
       hora ? `<span class="il-post__date-time">${escHtml(hora)}</span>` : ""
     }</time>`;
   }
@@ -682,7 +721,7 @@
     row.className = "il-hijo-row";
     row.innerHTML = `
       <label class="ob-field">Nombre del hijo(a)
-        <input type="text" name="hijoNombre" maxlength="80" value="${M().escapeAttr(nombre)}" placeholder="María Gómez" />
+        <input type="text" name="hijoNombre" maxlength="80" value="${escAttr(nombre)}" placeholder="María Gómez" />
       </label>
       <label class="ob-field">Grado
         <select name="hijoGrado">
@@ -756,34 +795,37 @@
   function renderFeed() {
     const list = $("#feed-list");
     if (!list) return;
-    const esc = M().escapeHtml;
     const uid = user?.uid || "";
     const meta = $("#ffilter-meta");
-    const items = filteredPosts();
 
-    if (meta) {
-      meta.textContent = posts.length
-        ? `Mostrando ${items.length} de ${posts.length}`
-        : "";
-    }
+    try {
+      const items = filteredPosts();
 
-    if (!posts.length) {
-      list.innerHTML = `<div class="il-empty">Aún no hay publicaciones. ¡Sé el primero en compartir!</div>`;
-      return;
-    }
+      if (meta) {
+        meta.textContent = posts.length
+          ? `Mostrando ${items.length} de ${posts.length}`
+          : "";
+      }
 
-    if (!items.length) {
-      list.innerHTML = `<div class="il-empty">No hay publicaciones con esos filtros.</div>`;
-      return;
-    }
+      if (!posts.length) {
+        list.innerHTML = `<div class="il-empty">Aún no hay publicaciones. ¡Sé el primero en compartir!</div>`;
+        return;
+      }
 
-    list.innerHTML = items
-      .map((p) => {
-        const liked = Array.isArray(p.likedBy) && uid && p.likedBy.includes(uid);
-        const disliked = Array.isArray(p.dislikedBy) && uid && p.dislikedBy.includes(uid);
-        const mine = p.autorUid === uid;
-        return `
-      <article class="il-post" data-id="${esc(p.id)}">
+      if (!items.length) {
+        list.innerHTML = `<div class="il-empty">No hay publicaciones con esos filtros.</div>`;
+        return;
+      }
+
+      list.innerHTML = items
+        .map((p) => {
+          try {
+            const liked = Array.isArray(p.likedBy) && uid && p.likedBy.includes(uid);
+            const disliked = Array.isArray(p.dislikedBy) && uid && p.dislikedBy.includes(uid);
+            const mine = p.autorUid === uid;
+            const media = typeof M()?.mediaHtml === "function" ? M().mediaHtml(p) : "";
+            return `
+      <article class="il-post" data-id="${escAttr(p.id)}">
         <header class="il-post__head">
           <div class="il-post__who">
             ${driveAvatarHtml(p.autorFotoUrl || (mine ? perfil?.fotoUrl : ""), p.autorLabel || "Usuario", {
@@ -791,44 +833,78 @@
               uid: p.autorUid || "",
             })}
             <div>
-              <strong class="il-post__author">${esc(displayAutorLabel(p.autorLabel || "Usuario"))}</strong>
-              ${fechaPublicacionHtml(p.createdAt)}
+              <strong class="il-post__author">${escHtml(displayAutorLabel(p.autorLabel || "Usuario"))}</strong>
+              ${fechaPublicacionHtml(p.createdAt || p.updatedAt)}
             </div>
           </div>
           ${
             mine
               ? `<div class="il-post__owner">
-            <button type="button" class="il-icon-btn" data-edit-post="${esc(p.id)}" aria-label="Editar publicación" title="Editar">
+            <button type="button" class="il-icon-btn" data-edit-post="${escAttr(p.id)}" aria-label="Editar publicación" title="Editar">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.2 6.3l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" class="il-icon-btn il-icon-btn--danger" data-delete-post="${esc(p.id)}" aria-label="Eliminar publicación" title="Eliminar">
+            <button type="button" class="il-icon-btn il-icon-btn--danger" data-delete-post="${escAttr(p.id)}" aria-label="Eliminar publicación" title="Eliminar">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>
           </div>`
               : ""
           }
         </header>
-        <h2 class="il-post__title">${esc(p.titulo || "")}</h2>
-        <p class="il-post__body">${esc(p.mensaje || "")}</p>
-        ${M().mediaHtml(p)}
+        <h2 class="il-post__title">${escHtml(p.titulo || "")}</h2>
+        <p class="il-post__body">${escHtml(p.mensaje || "")}</p>
+        ${media}
         <div class="il-post__actions">
-          <button type="button" class="il-react il-like ${liked ? "is-active" : ""}" data-like="${esc(p.id)}" aria-pressed="${liked}" aria-label="Me gusta">
+          <button type="button" class="il-react il-like ${liked ? "is-active" : ""}" data-like="${escAttr(p.id)}" aria-pressed="${liked}" aria-label="Me gusta">
             <span class="il-react__icon">${liked ? "♥" : "♡"}</span>
             <span class="il-react__label">Me gusta</span>
             <span class="il-react__count">${Number(p.likesCount) || 0}</span>
           </button>
-          <button type="button" class="il-react il-dislike ${disliked ? "is-active" : ""}" data-dislike="${esc(p.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
+          <button type="button" class="il-react il-dislike ${disliked ? "is-active" : ""}" data-dislike="${escAttr(p.id)}" aria-pressed="${disliked}" aria-label="No me gusta">
             <span class="il-react__icon">${disliked ? "▾" : "▿"}</span>
             <span class="il-react__label">No me gusta</span>
             <span class="il-react__count">${Number(p.dislikesCount) || 0}</span>
           </button>
-          <button type="button" class="btn btn--ghost btn--sm" data-comments="${esc(p.id)}">
+          <button type="button" class="btn btn--ghost btn--sm" data-comments="${escAttr(p.id)}">
             Comentarios (${Number(p.comentariosCount) || 0})
           </button>
         </div>
       </article>`;
-      })
-      .join("");
+          } catch (err) {
+            console.error("Error renderizando publicación", p?.id, err);
+            return `<article class="il-post"><p class="il-empty">No se pudo mostrar una publicación.</p></article>`;
+          }
+        })
+        .join("");
+    } catch (err) {
+      console.error("renderFeed", err);
+      list.innerHTML = `<div class="il-empty">No se pudieron mostrar las publicaciones. Recarga la página.<br /><small>${escHtml(err?.message || err)}</small></div>`;
+    }
+  }
+
+  function ensurePostsWatch() {
+    if (!FB()?.watchPosts) return;
+    if (postsUnsub) {
+      try {
+        postsUnsub();
+      } catch {
+        /* ignore */
+      }
+      postsUnsub = null;
+    }
+    postsUnsub = FB().watchPosts(
+      (items) => {
+        posts = Array.isArray(items) ? items : [];
+        renderFeed();
+      },
+      80,
+      (err) => {
+        console.error(err);
+        const list = $("#feed-list");
+        if (list) {
+          list.innerHTML = `<div class="il-empty">No se pudieron cargar las publicaciones.<br /><small>${escHtml(err?.message || err)}</small></div>`;
+        }
+      }
+    );
   }
 
   function syncCommentHijoSelect() {
@@ -843,7 +919,7 @@
     sel.innerHTML = perfil.hijos
       .map(
         (h, i) =>
-          `<option value="${i}">${M().escapeHtml(h.nombre)} · ${M().escapeHtml(h.grado)}</option>`
+          `<option value="${i}">${escHtml(h.nombre)} · ${escHtml(h.grado)}</option>`
       )
       .join("");
   }
@@ -892,7 +968,7 @@
     sel.innerHTML = perfil.hijos
       .map(
         (h, i) =>
-          `<option value="${i}">${M().escapeHtml(h.nombre)} · ${M().escapeHtml(h.grado)}</option>`
+          `<option value="${i}">${escHtml(h.nombre)} · ${escHtml(h.grado)}</option>`
       )
       .join("");
   }
@@ -1003,14 +1079,7 @@
     syncComposeAvatar();
     syncPublishHijoSelect();
     showScreen("app");
-    if (postsUnsub) {
-      postsUnsub();
-      postsUnsub = null;
-    }
-    postsUnsub = FB().watchPosts((items) => {
-      posts = items;
-      renderFeed();
-    });
+    ensurePostsWatch();
   }
 
   function syncComposeAvatar() {
@@ -1103,7 +1172,7 @@
     row.className = "il-hijo-row";
     row.innerHTML = `
       <label class="ob-field">Nombre del hijo(a)
-        <input type="text" name="editHijoNombre" maxlength="80" value="${M().escapeAttr(nombre)}" placeholder="María Gómez" />
+        <input type="text" name="editHijoNombre" maxlength="80" value="${escAttr(nombre)}" placeholder="María Gómez" />
       </label>
       <label class="ob-field">Grado
         <select name="editHijoGrado">
@@ -1225,8 +1294,10 @@
     if (authBusy) return;
     // Misma sesión ya lista: no reprocesar (vuelves de la app pública, etc.)
     if (authHandledUid === nextUid && (nextUid === null || perfil?.rol)) {
-      if (nextUid && perfil?.rol) showScreen("app");
-      else if (!nextUid) showScreen("login");
+      if (nextUid && perfil?.rol) {
+        showScreen("app");
+        if (!postsUnsub) ensurePostsWatch();
+      } else if (!nextUid) showScreen("login");
       return;
     }
 
@@ -1304,14 +1375,14 @@
     if (matList) {
       matList.innerHTML = MATERIAS.map(
         (m) =>
-          `<label class="ob-chip"><input type="checkbox" value="${M().escapeAttr(m)}" /><span>${M().escapeHtml(m)}</span></label>`
+          `<label class="ob-chip"><input type="checkbox" value="${escAttr(m)}" /><span>${escHtml(m)}</span></label>`
       ).join("");
     }
     const editMatList = $("#edit-materias-list");
     if (editMatList) {
       editMatList.innerHTML = MATERIAS.map(
         (m) =>
-          `<label class="ob-chip"><input type="checkbox" value="${M().escapeAttr(m)}" /><span>${M().escapeHtml(m)}</span></label>`
+          `<label class="ob-chip"><input type="checkbox" value="${escAttr(m)}" /><span>${escHtml(m)}</span></label>`
       ).join("");
     }
 
@@ -1525,6 +1596,7 @@
         } else {
           await FB().createPost(payload);
         }
+        if (!postsUnsub) ensurePostsWatch();
         const dialog = $("#modal-publish");
         if (dialog?.open) dialog.close();
         else dialog?.removeAttribute("open");

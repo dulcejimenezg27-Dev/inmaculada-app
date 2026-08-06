@@ -1,11 +1,12 @@
 /* Service Worker — InmaLink */
-const CACHE_NAME = "inmalink-v30";
+const CACHE_NAME = "inmalink-v31";
 const ASSETS = [
   "./index.html",
   "./css/inmalink.css",
   "./js/app.js",
   "./js/media.js",
   "./js/firebase-config.js",
+  "./js/firebase.js",
   "./manifest.json",
 ];
 

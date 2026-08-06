@@ -149,22 +149,42 @@ async function savePerfil(uid, data) {
   return payload;
 }
 
-function watchPosts(callback, max = 80) {
+function watchPosts(callback, max = 80, onError) {
+  let unsub = () => {};
+  let cancelled = false;
+
+  const start = () => {
+    if (!db || cancelled) return;
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(max));
+    unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        callback(items);
+      },
+      (err) => {
+        console.error(err);
+        if (typeof onError === "function") onError(err);
+      }
+    );
+  };
+
   if (!db) {
     initPromise.then(() => {
-      if (db) watchPosts(callback, max);
+      if (!cancelled) start();
     });
-    return () => {};
+  } else {
+    start();
   }
-  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(max));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      callback(items);
-    },
-    (err) => console.error(err)
-  );
+
+  return () => {
+    cancelled = true;
+    try {
+      unsub();
+    } catch {
+      /* ignore */
+    }
+  };
 }
 
 async function createPost(data) {
