@@ -549,11 +549,12 @@
   }
 
   function fechaPublicacionHtml(iso, className = "il-post__date") {
+    const escHtml = M()?.escapeHtml || ((s) => String(s));
     const fecha = formatFecha(iso);
     if (!fecha) return "";
     const hora = formatHora(iso);
-    return `<time class="${className}" datetime="${esc(String(iso))}"><span class="il-post__date-day">${esc(fecha)}</span>${
-      hora ? `<span class="il-post__date-time">${esc(hora)}</span>` : ""
+    return `<time class="${className}" datetime="${escHtml(String(iso))}"><span class="il-post__date-day">${escHtml(fecha)}</span>${
+      hora ? `<span class="il-post__date-time">${escHtml(hora)}</span>` : ""
     }</time>`;
   }
 
