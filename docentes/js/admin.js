@@ -688,6 +688,7 @@
           fecha: new Date().toISOString().slice(0, 10),
           autor,
           createdBy: currentUser?.email || FB.auth.currentUser.email || "",
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         comunicados.unshift(item);

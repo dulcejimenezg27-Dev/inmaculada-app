@@ -50,8 +50,28 @@
   }
 
   function formatFecha(iso) {
-    const [y, m, d] = iso.split("-").map(Number);
+    const [y, m, d] = String(iso || "")
+      .slice(0, 10)
+      .split("-")
+      .map(Number);
+    if (!y || !m || !d) return "";
     return `${d} de ${MESES[m - 1]} de ${y}`;
+  }
+
+  function formatHora(iso) {
+    if (!iso) return "";
+    const s = String(iso).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("es-CO", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  function horaPublicacion(item) {
+    return formatHora(item?.createdAt || item?.updatedAt || "");
   }
 
   function escapeHtml(str) {
@@ -210,10 +230,14 @@
       <article class="feed-item" data-id="${c.id}">
         ${
           C && C.autorMetaHtml
-            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria, horaPublicacion(c))
             : `<div class="feed-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
-          <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
+          <time class="feed-item__date" datetime="${c.fecha}"><span class="feed-item__date-day">${formatFecha(c.fecha)}</span>${
+              horaPublicacion(c)
+                ? `<span class="feed-item__date-time">${escapeHtml(horaPublicacion(c))}</span>`
+                : ""
+            }</time>
         </div>`
         }
         <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
@@ -266,10 +290,14 @@
       <article class="feed-item" data-id="${c.id}">
         ${
           C && C.autorMetaHtml
-            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria, horaPublicacion(c))
             : `<div class="feed-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
-          <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
+          <time class="feed-item__date" datetime="${c.fecha}"><span class="feed-item__date-day">${formatFecha(c.fecha)}</span>${
+              horaPublicacion(c)
+                ? `<span class="feed-item__date-time">${escapeHtml(horaPublicacion(c))}</span>`
+                : ""
+            }</time>
         </div>`
         }
         <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>
@@ -302,10 +330,14 @@
       <article class="feed-item" data-id="${c.id}">
         ${
           C && C.autorMetaHtml
-            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria)
+            ? C.autorMetaHtml(enrichAutor(c.autor), formatFecha(c.fecha), c.categoria, horaPublicacion(c))
             : `<div class="feed-item__meta">
           <span class="tag tag--${c.categoria}">${c.categoria}</span>
-          <time class="feed-item__date" datetime="${c.fecha}">${formatFecha(c.fecha)}</time>
+          <time class="feed-item__date" datetime="${c.fecha}"><span class="feed-item__date-day">${formatFecha(c.fecha)}</span>${
+              horaPublicacion(c)
+                ? `<span class="feed-item__date-time">${escapeHtml(horaPublicacion(c))}</span>`
+                : ""
+            }</time>
         </div>`
         }
         <h3 class="feed-item__title">${escapeHtml(c.titulo)}</h3>

@@ -226,8 +226,14 @@
               uid: c.autorUid || "",
             })}
             <div class="il-comment__meta">
-                <strong class="il-comment__author">${esc(displayAutorLabel(label))}</strong>
-              <time>${esc(formatFecha(c.updatedAt || c.createdAt))}${c.updatedAt && c.updatedAt !== c.createdAt ? " · editado" : ""}</time>
+              <strong class="il-comment__author">${esc(displayAutorLabel(label))}</strong>
+              <div class="il-comment__when">
+                ${fechaPublicacionHtml(c.createdAt || c.updatedAt, "il-comment__date")}${
+                  c.updatedAt && c.createdAt && c.updatedAt !== c.createdAt
+                    ? `<span class="il-comment__edited">· editado</span>`
+                    : ""
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -530,6 +536,27 @@
     });
   }
 
+  function formatHora(iso) {
+    if (!iso) return "";
+    const s = String(iso).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("es-CO", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  function fechaPublicacionHtml(iso, className = "il-post__date") {
+    const fecha = formatFecha(iso);
+    if (!fecha) return "";
+    const hora = formatHora(iso);
+    return `<time class="${className}" datetime="${esc(String(iso))}"><span class="il-post__date-day">${esc(fecha)}</span>${
+      hora ? `<span class="il-post__date-time">${esc(hora)}</span>` : ""
+    }</time>`;
+  }
+
   function setError(id, msg) {
     const el = $(id);
     if (!el) return;
@@ -764,7 +791,7 @@
             })}
             <div>
               <strong class="il-post__author">${esc(displayAutorLabel(p.autorLabel || "Usuario"))}</strong>
-              <time class="il-post__date">${esc(formatFecha(p.createdAt))}</time>
+              ${fechaPublicacionHtml(p.createdAt)}
             </div>
           </div>
           ${

@@ -403,13 +403,20 @@ window.InmaculadaContent = (() => {
     return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
   }
 
-  function autorMetaHtml(autor, fechaLabel, categoria) {
+  function autorMetaHtml(autor, fechaLabel, categoria, horaLabel) {
     const nombre =
       (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
       "Colegio La Inmaculada";
     const licencia = String(autor?.cargoLabel || autor?.licenciatura || autor?.cargo || "").trim();
     const tag = categoria
       ? `<span class="tag tag--${escapeAttr(categoria)}">${escapeHtmlText(categoria)}</span>`
+      : "";
+    const fechaHtml = fechaLabel
+      ? `<time class="feed-item__date"><span class="feed-item__date-day">${escapeHtmlText(fechaLabel)}</span>${
+          horaLabel
+            ? `<span class="feed-item__date-time">${escapeHtmlText(horaLabel)}</span>`
+            : ""
+        }</time>`
       : "";
     return `
       <div class="feed-author">
@@ -419,7 +426,7 @@ window.InmaculadaContent = (() => {
           ${licencia ? `<span class="feed-author__role">${escapeHtmlText(licencia)}</span>` : ""}
           <div class="feed-author__meta">
             ${tag}
-            ${fechaLabel ? `<time class="feed-item__date">${escapeHtmlText(fechaLabel)}</time>` : ""}
+            ${fechaHtml}
           </div>
         </div>
       </div>`;
@@ -454,7 +461,7 @@ window.InmaculadaContent = (() => {
             <span class="media-drive-poster__play" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86a1 1 0 00-1.5.86z"/></svg>
             </span>
-            <span class="media-drive-poster__label">Video de Drive · Toca para ver</span>
+            <span class="media-drive-poster__label">Video de Drive · Toca para reproducir</span>
           </button>
         </div>`
       );

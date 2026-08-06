@@ -1836,8 +1836,18 @@ body.has-install-bar .topbar {
 }
 
 .feed-item__date {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+.feed-item__date-time {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.88;
 }
 
 .feed-item__title {

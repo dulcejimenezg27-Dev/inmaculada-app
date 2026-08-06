@@ -551,6 +551,7 @@
           imagenDrive,
           fecha: new Date().toISOString().slice(0, 10),
           createdBy: "admin",
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           autor,
         };

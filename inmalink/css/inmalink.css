@@ -1284,9 +1284,26 @@ textarea {
   box-shadow: 0 4px 0 rgba(185, 28, 28, 0.18);
 }
 
-.il-post__date {
-  display: block;
+.il-post__date,
+.il-comment__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
   font-size: 0.76rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.il-post__date-time,
+.il-comment__date .il-post__date-time {
+  font-size: 0.66rem;
+  font-weight: 600;
+  opacity: 0.88;
+}
+
+.il-comment__edited {
+  font-size: 0.66rem;
   color: var(--muted);
   font-weight: 600;
 }
@@ -1714,7 +1731,8 @@ textarea {
   margin: 0.25rem 0;
 }
 
-.il-comment time {
+.il-comment time,
+.il-comment__date {
   font-size: 0.75rem;
   color: var(--muted);
 }
@@ -1737,6 +1755,13 @@ textarea {
   display: grid;
   gap: 0.1rem;
   min-width: 0;
+}
+
+.il-comment__when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
 }
 
 .il-comment__author {

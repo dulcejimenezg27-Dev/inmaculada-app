@@ -403,13 +403,20 @@ window.InmaculadaContent = (() => {
     return `<span class="feed-author__avatar feed-author__avatar--fallback" aria-hidden="true">${escapeHtmlText(initials)}</span>`;
   }
 
-  function autorMetaHtml(autor, fechaLabel, categoria) {
+  function autorMetaHtml(autor, fechaLabel, categoria, horaLabel) {
     const nombre =
       (autor && (autor.nombreCompleto || [autor.nombres, autor.apellidos].filter(Boolean).join(" "))) ||
       "Colegio La Inmaculada";
     const licencia = String(autor?.cargoLabel || autor?.licenciatura || autor?.cargo || "").trim();
     const tag = categoria
       ? `<span class="tag tag--${escapeAttr(categoria)}">${escapeHtmlText(categoria)}</span>`
+      : "";
+    const fechaHtml = fechaLabel
+      ? `<time class="feed-item__date"><span class="feed-item__date-day">${escapeHtmlText(fechaLabel)}</span>${
+          horaLabel
+            ? `<span class="feed-item__date-time">${escapeHtmlText(horaLabel)}</span>`
+            : ""
+        }</time>`
       : "";
     return `
       <div class="feed-author">
@@ -419,7 +426,7 @@ window.InmaculadaContent = (() => {
           ${licencia ? `<span class="feed-author__role">${escapeHtmlText(licencia)}</span>` : ""}
           <div class="feed-author__meta">
             ${tag}
-            ${fechaLabel ? `<time class="feed-item__date">${escapeHtmlText(fechaLabel)}</time>` : ""}
+            ${fechaHtml}
           </div>
         </div>
       </div>`;

@@ -493,6 +493,7 @@
           fecha: new Date().toISOString().slice(0, 10),
           autor,
           createdBy: currentUser.email || "",
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         posts.unshift(item);
